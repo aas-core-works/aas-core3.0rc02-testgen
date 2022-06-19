@@ -1,18 +1,14 @@
 """Provide common methods for generation of data in different formats."""
 
-import hashlib
 import io
 import pathlib
-import re
-from typing import MutableMapping, Tuple, Sequence, Union, List
+from typing import MutableMapping, Tuple
 
-import aas_core_meta.v3rc2
 import aas_core_codegen.common
-import aas_core_codegen.run
 import aas_core_codegen.parse
-
+import aas_core_codegen.run
+import aas_core_meta.v3rc2
 from aas_core_codegen import intermediate, infer_for_schema
-from icontract import ensure, require
 
 
 def load_symbol_table_and_infer_constraints_for_schema() -> Tuple[
@@ -128,83 +124,3 @@ def load_symbol_table_and_infer_constraints_for_schema() -> Tuple[
     assert constraints_by_class is not None
 
     return ir_symbol_table, constraints_by_class
-
-
-HEX_RE = re.compile(r"[a-fA-F0-9]+")
-
-
-@ensure(lambda result: HEX_RE.fullmatch(result))
-def hash_path(path_segments: Sequence[Union[str, int]]) -> str:
-    """Hash the given path to a value in the model."""
-    hsh = hashlib.md5()
-    hsh.update(("".join(repr(segment) for segment in path_segments)).encode("utf-8"))
-    return hsh.hexdigest()[:8]
-
-
-def posix_path(path_segments: Sequence[Union[str, int]]) -> pathlib.PurePosixPath:
-    """Make a POSIX path out of the path segments."""
-    pth = pathlib.PurePosixPath("/")
-    for segment in path_segments:
-        pth = pth / str(segment)
-
-    return pth
-
-
-@require(lambda length: length > 0)
-@ensure(lambda result, length: len(result) == length)
-def generate_long_string(
-    length: int,
-    path_segments: List[Union[int, str]],
-) -> str:
-    """
-    Generate a string longer than the ``length``.
-
-    >>> generate_long_string(2, ['some', 3, 'path'])
-    'x9'
-
-    >>> generate_long_string(9, ['some', 3, 'path'])
-    'x99ef1573'
-
-    >>> generate_long_string(10, ['some', 3, 'path'])
-    'x99ef15730'
-
-    >>> generate_long_string(15, ['some', 3, 'path'])
-    'x99ef1573012345'
-
-    >>> generate_long_string(20, ['some', 3, 'path'])
-    'x99ef157301234567890'
-
-    >>> generate_long_string(21, ['some', 3, 'path'])
-    'x99ef1573012345678901'
-    """
-    prefix = f"x{hash_path(path_segments=path_segments)}"
-    if len(prefix) > length:
-        return prefix[:length]
-
-    ruler = "1234567890"
-
-    if length <= 10:
-        return prefix + ruler[len(prefix) : length]
-
-    tens = length // 10
-    remainder = length % 10
-    return "".join(
-        [prefix, ruler[len(prefix) : 10], ruler * (tens - 1), ruler[:remainder]]
-    )
-
-
-def generate_time_of_day(path_segments: List[Union[int, str]]) -> str:
-    """Generate a random time of the day based on the path to the value."""
-    hsh = hash_path(path_segments=path_segments)
-
-    hsh_as_int = int(hsh, base=16)
-
-    remainder = hsh_as_int
-    hours = (remainder // 3600) % 24
-    remainder = remainder % 3600
-    minutes = (remainder // 60) % 60
-    seconds = remainder % 60
-
-    fraction = hsh_as_int % 1000000
-
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{fraction}"

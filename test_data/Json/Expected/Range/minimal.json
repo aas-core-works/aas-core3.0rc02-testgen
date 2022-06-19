@@ -5,9 +5,10 @@
       "modelType": "Submodel",
       "submodelElements": [
         {
-          "idShort": "some_id_short_5a3e7c0f",
+          "idShort": "some_id_short_10b21b1b",
           "modelType": "Range",
-          "valueType": "xs:time"
+          "valueType": "xs:integer",
+          "valuetype": "xs:int"
         }
       ]
     }
