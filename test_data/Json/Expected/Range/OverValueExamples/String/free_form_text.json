@@ -9,8 +9,7 @@
           "max": "some free & <free> \u1984 form text",
           "min": "some free & <free> \u1984 form text",
           "modelType": "Range",
-          "valueType": "xs:string",
-          "valuetype": "xs:int"
+          "valueType": "xs:string"
         }
       ]
     }

@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "@\u010a@=%ac/%Ecu%2a",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:anyURI"
         }
       ]
     }

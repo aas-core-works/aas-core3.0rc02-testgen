@@ -9,8 +9,7 @@
           "max": "-0844-11-30",
           "min": "-0844-11-30",
           "modelType": "Range",
-          "valueType": "xs:date",
-          "valuetype": "xs:int"
+          "valueType": "xs:date"
         }
       ]
     }

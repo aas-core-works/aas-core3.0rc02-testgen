@@ -9,8 +9,7 @@
           "max": "--10-07",
           "min": "--10-07",
           "modelType": "Range",
-          "valueType": "xs:gMonthDay",
-          "valuetype": "xs:int"
+          "valueType": "xs:gMonthDay"
         }
       ]
     }

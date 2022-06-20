@@ -9,8 +9,7 @@
           "max": "",
           "min": "",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

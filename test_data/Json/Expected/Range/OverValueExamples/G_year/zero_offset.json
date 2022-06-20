@@ -9,8 +9,7 @@
           "max": "2001+00:00",
           "min": "2001+00:00",
           "modelType": "Range",
-          "valueType": "xs:gYear",
-          "valuetype": "xs:int"
+          "valueType": "xs:gYear"
         }
       ]
     }

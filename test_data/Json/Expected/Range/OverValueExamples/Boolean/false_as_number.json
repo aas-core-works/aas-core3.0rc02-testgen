@@ -9,8 +9,7 @@
           "max": "0",
           "min": "0",
           "modelType": "Range",
-          "valueType": "xs:boolean",
-          "valuetype": "xs:int"
+          "valueType": "xs:boolean"
         }
       ]
     }

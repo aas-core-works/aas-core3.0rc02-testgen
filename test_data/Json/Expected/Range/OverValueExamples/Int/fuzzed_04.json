@@ -9,8 +9,7 @@
           "max": "+478978",
           "min": "+478978",
           "modelType": "Range",
-          "valueType": "xs:int",
-          "valuetype": "xs:int"
+          "valueType": "xs:int"
         }
       ]
     }

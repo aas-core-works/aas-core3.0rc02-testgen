@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "aBe5ccF85fbf32",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

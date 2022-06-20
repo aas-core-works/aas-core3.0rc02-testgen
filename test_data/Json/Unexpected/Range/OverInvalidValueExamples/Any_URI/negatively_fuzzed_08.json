@@ -9,8 +9,7 @@
           "max": "\ud8e8\ude54\u0005\u00bf.",
           "min": "\ud8e8\ude54\u0005\u00bf.",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P530901586DT1S",
           "min": "P530901586DT1S",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "C4E02bbC",
           "min": "C4E02bbC",
           "modelType": "Range",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:int"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

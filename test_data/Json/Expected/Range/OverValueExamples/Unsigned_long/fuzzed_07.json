@@ -9,8 +9,7 @@
           "max": "+000000038893",
           "min": "+000000038893",
           "modelType": "Range",
-          "valueType": "xs:unsignedLong",
-          "valuetype": "xs:int"
+          "valueType": "xs:unsignedLong"
         }
       ]
     }

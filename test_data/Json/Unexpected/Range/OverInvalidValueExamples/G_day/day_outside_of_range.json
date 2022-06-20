@@ -9,8 +9,7 @@
           "max": "---35",
           "min": "---35",
           "modelType": "Range",
-          "valueType": "xs:gDay",
-          "valuetype": "xs:int"
+          "valueType": "xs:gDay"
         }
       ]
     }

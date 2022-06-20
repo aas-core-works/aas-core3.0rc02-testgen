@@ -9,8 +9,7 @@
           "max": "https://github.com/aas-core-works/aas-core-codegen",
           "min": "https://github.com/aas-core-works/aas-core-codegen",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "\udbfc\ude7a\udbfc\ude7a",
           "min": "\udbfc\ude7a\udbfc\ude7a",
           "modelType": "Range",
-          "valueType": "xs:string",
-          "valuetype": "xs:int"
+          "valueType": "xs:string"
         }
       ]
     }

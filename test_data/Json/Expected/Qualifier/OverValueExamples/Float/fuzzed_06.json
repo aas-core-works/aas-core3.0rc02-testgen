@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": ".5885e-29",
-          "valueType": "xs:float",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:float"
         }
       ]
     }

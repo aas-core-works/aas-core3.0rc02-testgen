@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "-0109+14:00",
-          "valueType": "xs:gYear",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:gYear"
         }
       ]
     }

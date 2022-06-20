@@ -7,8 +7,7 @@
         {
           "idShort": "some_id_short_10b21b1b",
           "modelType": "Range",
-          "valueType": "xs:integer",
-          "valuetype": "xs:int"
+          "valueType": "xs:int"
         }
       ]
     }

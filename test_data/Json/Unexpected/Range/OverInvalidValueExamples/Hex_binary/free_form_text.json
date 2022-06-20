@@ -9,8 +9,7 @@
           "max": "some free form text",
           "min": "some free form text",
           "modelType": "Range",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:int"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

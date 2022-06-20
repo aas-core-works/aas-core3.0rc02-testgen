@@ -9,8 +9,7 @@
           "max": "\u0082",
           "min": "\u0082",
           "modelType": "Range",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:int"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

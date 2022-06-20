@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "\udbfc\ude7a\udbfc\ude7a",
-          "valueType": "xs:string",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:string"
         }
       ]
     }

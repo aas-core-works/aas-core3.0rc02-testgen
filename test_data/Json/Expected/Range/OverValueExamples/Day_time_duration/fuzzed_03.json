@@ -9,8 +9,7 @@
           "max": "-P0D",
           "min": "-P0D",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

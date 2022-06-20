@@ -9,8 +9,7 @@
           "max": "==0F",
           "min": "==0F",
           "modelType": "Range",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:int"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

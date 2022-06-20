@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "TRUE",
-          "valueType": "xs:boolean",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:boolean"
         }
       ]
     }

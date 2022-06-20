@@ -5,7 +5,7 @@
       "modelType": "Submodel",
       "submodelElements": [
         {
-          "category": "something_random_b8813eeb",
+          "category": "CONSTANT",
           "checksum": "something_random_9711a3c9",
           "dataSpecifications": [
             {
@@ -36,18 +36,19 @@
           },
           "extensions": [
             {
-              "name": "something_random_49c224a4"
+              "name": "something_random_49c224a4",
+              "valueType": "xs:boolean"
             }
           ],
           "idShort": "some_id_short_10b21b1b",
           "kind": "Template",
-          "modelType": "SubmodelElementList",
-          "orderRelevant": false,
+          "max": "4321",
+          "min": "1234",
+          "modelType": "Range",
           "qualifiers": [
             {
               "type": "something_random_a250eeff",
-              "valueType": "xs:string",
-              "valuetype": "xs:boolean"
+              "valueType": "xs:boolean"
             }
           ],
           "semanticId": {
@@ -55,15 +56,6 @@
               {
                 "type": "GlobalReference",
                 "value": "something_random_bd061acd"
-              }
-            ],
-            "type": "GlobalReference"
-          },
-          "semanticIdListElement": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "something_random_4ed3e682"
               }
             ],
             "type": "GlobalReference"
@@ -79,13 +71,7 @@
               "type": "GlobalReference"
             }
           ],
-          "typeValueListElement": "SubmodelElementCollection",
-          "value": [
-            {
-              "modelType": "Capability"
-            }
-          ],
-          "valueTypeListElement": "xs:positiveInteger"
+          "valueType": "xs:int"
         }
       ]
     }

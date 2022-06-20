@@ -9,8 +9,7 @@
           "max": "",
           "min": "",
           "modelType": "Range",
-          "valueType": "xs:dateTimeStamp",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTimeStamp"
         }
       ]
     }

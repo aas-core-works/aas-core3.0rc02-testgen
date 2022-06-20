@@ -9,8 +9,7 @@
           "max": "http://datypic.com#f% rag",
           "min": "http://datypic.com#f% rag",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

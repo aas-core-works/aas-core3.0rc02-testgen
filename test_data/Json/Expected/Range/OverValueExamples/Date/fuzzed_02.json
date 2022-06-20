@@ -9,8 +9,7 @@
           "max": "-0236-12-31Z",
           "min": "-0236-12-31Z",
           "modelType": "Range",
-          "valueType": "xs:date",
-          "valuetype": "xs:int"
+          "valueType": "xs:date"
         }
       ]
     }

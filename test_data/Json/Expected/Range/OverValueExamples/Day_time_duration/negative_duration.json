@@ -9,8 +9,7 @@
           "max": "-P120DT10H30M",
           "min": "-P120DT10H30M",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

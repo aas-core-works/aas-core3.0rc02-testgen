@@ -9,8 +9,7 @@
           "max": "340282346638528859811704183484516925440",
           "min": "340282346638528859811704183484516925440",
           "modelType": "Range",
-          "valueType": "xs:float",
-          "valuetype": "xs:int"
+          "valueType": "xs:float"
         }
       ]
     }

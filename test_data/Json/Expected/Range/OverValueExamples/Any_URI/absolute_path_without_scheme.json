@@ -9,8 +9,7 @@
           "max": "/path/to/somewhere",
           "min": "/path/to/somewhere",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

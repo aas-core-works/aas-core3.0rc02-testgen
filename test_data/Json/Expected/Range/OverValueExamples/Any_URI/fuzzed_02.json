@@ -9,8 +9,7 @@
           "max": "?\udbba\udc00#/",
           "min": "?\udbba\udc00#/",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

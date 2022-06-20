@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "-60601-01-10T24:00:00.000000+10:25",
-          "valueType": "xs:dateTimeStamp",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:dateTimeStamp"
         }
       ]
     }

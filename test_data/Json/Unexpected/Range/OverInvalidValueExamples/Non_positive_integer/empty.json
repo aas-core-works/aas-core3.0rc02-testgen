@@ -9,8 +9,7 @@
           "max": "",
           "min": "",
           "modelType": "Range",
-          "valueType": "xs:nonPositiveInteger",
-          "valuetype": "xs:int"
+          "valueType": "xs:nonPositiveInteger"
         }
       ]
     }

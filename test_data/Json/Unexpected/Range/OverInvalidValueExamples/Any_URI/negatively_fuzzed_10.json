@@ -9,8 +9,7 @@
           "max": "\u0097L\u00f9\u00d9",
           "min": "\u0097L\u00f9\u00d9",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

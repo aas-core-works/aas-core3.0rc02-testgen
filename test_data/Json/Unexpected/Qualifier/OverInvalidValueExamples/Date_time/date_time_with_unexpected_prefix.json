@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "unexpected-prefix-2022-04-01T01:02:03Z",
-          "valueType": "xs:dateTime",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:dateTime"
         }
       ]
     }

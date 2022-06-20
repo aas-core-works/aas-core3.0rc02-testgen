@@ -9,8 +9,7 @@
           "max": "2022-04-01T01:02:03.0123456789Z",
           "min": "2022-04-01T01:02:03.0123456789Z",
           "modelType": "Range",
-          "valueType": "xs:dateTime",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTime"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "@\u010a@=%ac/%Ecu%2a",
           "min": "@\u010a@=%ac/%Ecu%2a",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

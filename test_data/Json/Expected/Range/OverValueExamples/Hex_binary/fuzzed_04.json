@@ -9,8 +9,7 @@
           "max": "A8",
           "min": "A8",
           "modelType": "Range",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:int"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

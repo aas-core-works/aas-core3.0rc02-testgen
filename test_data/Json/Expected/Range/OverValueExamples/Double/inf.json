@@ -9,8 +9,7 @@
           "max": "INF",
           "min": "INF",
           "modelType": "Range",
-          "valueType": "xs:double",
-          "valuetype": "xs:int"
+          "valueType": "xs:double"
         }
       ]
     }

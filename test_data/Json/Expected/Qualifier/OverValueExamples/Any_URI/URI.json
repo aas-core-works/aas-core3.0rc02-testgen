@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "https://github.com/aas-core-works/aas-core-codegen",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:anyURI"
         }
       ]
     }

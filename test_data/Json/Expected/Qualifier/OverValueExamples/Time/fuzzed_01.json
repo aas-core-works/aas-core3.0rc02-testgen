@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "24:00:00.00Z",
-          "valueType": "xs:time",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:time"
         }
       ]
     }

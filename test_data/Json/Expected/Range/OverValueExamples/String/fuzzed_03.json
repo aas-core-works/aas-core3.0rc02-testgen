@@ -9,8 +9,7 @@
           "max": "uN",
           "min": "uN",
           "modelType": "Range",
-          "valueType": "xs:string",
-          "valuetype": "xs:int"
+          "valueType": "xs:string"
         }
       ]
     }

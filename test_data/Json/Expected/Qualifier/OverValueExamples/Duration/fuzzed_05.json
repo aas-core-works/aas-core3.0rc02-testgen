@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "PT88M48936316289.34291243605107045S",
-          "valueType": "xs:duration",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:duration"
         }
       ]
     }

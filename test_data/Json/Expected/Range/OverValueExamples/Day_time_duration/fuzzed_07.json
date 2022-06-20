@@ -9,8 +9,7 @@
           "max": "-P0DT6144M700036S",
           "min": "-P0DT6144M700036S",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

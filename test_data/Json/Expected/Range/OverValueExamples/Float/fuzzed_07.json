@@ -9,8 +9,7 @@
           "max": "1e-7",
           "min": "1e-7",
           "modelType": "Range",
-          "valueType": "xs:float",
-          "valuetype": "xs:int"
+          "valueType": "xs:float"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P526Y5M",
           "min": "P526Y5M",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

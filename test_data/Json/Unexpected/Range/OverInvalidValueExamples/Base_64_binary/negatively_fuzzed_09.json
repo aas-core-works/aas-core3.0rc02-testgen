@@ -9,8 +9,7 @@
           "max": "\ud917\udd62C\u00ad\u0006\u0002\u00daH\u0097\u00d4",
           "min": "\ud917\udd62C\u00ad\u0006\u0002\u00daH\u0097\u00d4",
           "modelType": "Range",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:int"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

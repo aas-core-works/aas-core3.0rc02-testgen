@@ -9,8 +9,7 @@
           "max": "+7626E-86876716",
           "min": "+7626E-86876716",
           "modelType": "Range",
-          "valueType": "xs:double",
-          "valuetype": "xs:int"
+          "valueType": "xs:double"
         }
       ]
     }

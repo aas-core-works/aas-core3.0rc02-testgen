@@ -9,8 +9,7 @@
           "max": "125774274",
           "min": "125774274",
           "modelType": "Range",
-          "valueType": "xs:gYear",
-          "valuetype": "xs:int"
+          "valueType": "xs:gYear"
         }
       ]
     }
