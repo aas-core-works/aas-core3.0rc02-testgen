@@ -1876,7 +1876,7 @@ def generate(
                     instance.properties["max"] = example_value
                     instance.properties["value_type"] = literal.value
 
-                    yield CasePositiveValueExample(
+                    yield CasePositiveMinMaxExample(
                         environment=env,
                         cls=cls,
                         data_type_def_literal=literal,
@@ -1890,7 +1890,7 @@ def generate(
                     instance.properties["max"] = example_value
                     instance.properties["value_type"] = literal.value
 
-                    yield CaseNegativeValueExample(
+                    yield CaseNegativeMinMaxExample(
                         environment=env,
                         cls=cls,
                         data_type_def_literal=literal,
