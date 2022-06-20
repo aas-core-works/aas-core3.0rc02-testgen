@@ -9,8 +9,7 @@
           "max": "nan",
           "min": "nan",
           "modelType": "Range",
-          "valueType": "xs:double",
-          "valuetype": "xs:int"
+          "valueType": "xs:double"
         }
       ]
     }

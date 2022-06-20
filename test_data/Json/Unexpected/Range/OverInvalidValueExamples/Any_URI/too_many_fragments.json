@@ -9,8 +9,7 @@
           "max": "http://datypic.com#frag1#frag2",
           "min": "http://datypic.com#frag1#frag2",
           "modelType": "Range",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:int"
+          "valueType": "xs:anyURI"
         }
       ]
     }

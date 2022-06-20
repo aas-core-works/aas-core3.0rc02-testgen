@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "UBU iUBU iQ n cy q 7wK",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

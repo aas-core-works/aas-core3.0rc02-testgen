@@ -9,8 +9,7 @@
           "max": "-20000-04",
           "min": "-20000-04",
           "modelType": "Range",
-          "valueType": "xs:gYearMonth",
-          "valuetype": "xs:int"
+          "valueType": "xs:gYearMonth"
         }
       ]
     }

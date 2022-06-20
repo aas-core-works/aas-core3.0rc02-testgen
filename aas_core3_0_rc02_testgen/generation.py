@@ -736,6 +736,8 @@ class _Handyman:
             "Asset_administration_shell": _Handyman._fix_asset_administration_shell,
             "Basic_event_element": _Handyman._fix_basic_event_element,
             "Concept_description": _Handyman._fix_concept_description,
+            "Entity": _Handyman._fix_entity,
+            "Extension": _Handyman._fix_extension,
             "Property": _Handyman._fix_property,
             "Qualifier": _Handyman._fix_qualifier,
             "Range": _Handyman._fix_range,
@@ -901,6 +903,45 @@ class _Handyman:
 
         self._recurse_into_properties(instance=instance, path_segments=path_segments)
 
+    def _fix_entity(
+        self, instance: Instance, path_segments: List[Union[str, int]]
+    ) -> None:
+        entity_type = instance.properties.get("entity_type", None)
+        if entity_type is not None:
+            entity_type_enum = self.symbol_table.must_find(Identifier("Entity_type"))
+            assert isinstance(entity_type_enum, intermediate.Enumeration)
+
+            self_managed_entity_literal = entity_type_enum.literals_by_name[
+                "Self_managed_entity"
+            ]
+
+            if entity_type == self_managed_entity_literal.value:
+                instance.properties.pop("specific_asset_id", None)
+            else:
+                instance.properties.pop("specific_asset_id", None)
+                instance.properties.pop("global_asset_id", None)
+
+        self._recurse_into_properties(instance=instance, path_segments=path_segments)
+
+    def _fix_extension(
+        self, instance: Instance, path_segments: List[Union[str, int]]
+    ) -> None:
+        extension_cls = self.symbol_table.must_find(Identifier("Extension"))
+        assert isinstance(extension_cls, intermediate.ConcreteClass)
+
+        # NOTE (mristin, 2022-06-20):
+        # We need to assert this as we are automatically setting the ``value_type``.
+        assert not isinstance(
+            extension_cls.properties_by_name[Identifier("value_type")],
+            intermediate.OptionalTypeAnnotation,
+        )
+
+        instance.properties["value_type"] = "xs:boolean"
+        if "value" in instance.properties:
+            instance.properties["value"] = "true"
+
+        self._recurse_into_properties(instance=instance, path_segments=path_segments)
+
     def _fix_property(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
@@ -933,7 +974,7 @@ class _Handyman:
             intermediate.OptionalTypeAnnotation,
         )
 
-        instance.properties["valueType"] = "xs:boolean"
+        instance.properties["value_type"] = "xs:boolean"
         if "value" in instance.properties:
             instance.properties["value"] = "true"
 
@@ -952,7 +993,7 @@ class _Handyman:
             intermediate.OptionalTypeAnnotation,
         )
 
-        instance.properties["valueType"] = "xs:int"
+        instance.properties["value_type"] = "xs:int"
         if "min" in instance.properties:
             instance.properties["min"] = "1234"
 
@@ -1591,7 +1632,7 @@ def generate(
         # BEFORE-RELEASE (mristin, 2022-06-19):
         # Remove this ``if`` and implement a proper function once we tested the
         # SDK with XML.
-        if symbol.name == "Submodel_element_list":
+        if symbol.name != "Submodel_element_list":
             # region Complete example
 
             env, instance = replicator_minimal.replicate()
@@ -1637,139 +1678,132 @@ def generate(
 
             # endregion
 
-            # region Positive and negative pattern examples
+        # region Positive and negative pattern examples
 
-            constraints_by_prop = constraints_by_class[symbol]
+        constraints_by_prop = constraints_by_class[symbol]
 
-            for prop in symbol.properties:
-                pattern_constraints = constraints_by_prop.patterns_by_property.get(
-                    prop, None
-                )
+        for prop in symbol.properties:
+            pattern_constraints = constraints_by_prop.patterns_by_property.get(
+                prop, None
+            )
 
-                if pattern_constraints is None:
-                    continue
+            if pattern_constraints is None:
+                continue
 
-                if len(pattern_constraints) > 1:
-                    # NOTE (mristin, 2022-06-20):
-                    # We currently do not know how to handle multiple patterns,
-                    # so we skip these properties.
-                    continue
+            if len(pattern_constraints) > 1:
+                # NOTE (mristin, 2022-06-20):
+                # We currently do not know how to handle multiple patterns,
+                # so we skip these properties.
+                continue
 
-                pattern_examples = frozen_examples_pattern.BY_PATTERN[
-                    pattern_constraints[0].pattern
-                ]
+            pattern_examples = frozen_examples_pattern.BY_PATTERN[
+                pattern_constraints[0].pattern
+            ]
 
-                for example_name, example_text in pattern_examples.positives.items():
-                    env, instance = replicator_minimal.replicate()
-
-                    instance.properties[prop.name] = example_text
-
-                    yield CasePositivePatternExample(
-                        environment=env,
-                        cls=symbol,
-                        property_name=prop.name,
-                        example_name=example_name,
-                    )
-
-                for example_name, example_text in pattern_examples.negatives.items():
-                    env, instance = replicator_minimal.replicate()
-
-                    instance.properties[prop.name] = example_text
-
-                    yield CaseNegativePatternExample(
-                        environment=env,
-                        cls=symbol,
-                        property_name=prop.name,
-                        example_name=example_name,
-                    )
-
-            # endregion
-
-            # region Required violation
-
-            for prop in symbol.properties:
-                if isinstance(
-                    prop.type_annotation, intermediate.OptionalTypeAnnotation
-                ):
-                    continue
-
+            for example_name, example_text in pattern_examples.positives.items():
                 env, instance = replicator_minimal.replicate()
 
-                del instance.properties[prop.name]
+                instance.properties[prop.name] = example_text
 
-                yield CaseRequiredViolation(
+                yield CasePositivePatternExample(
+                    environment=env,
+                    cls=symbol,
+                    property_name=prop.name,
+                    example_name=example_name,
+                )
+
+            for example_name, example_text in pattern_examples.negatives.items():
+                env, instance = replicator_minimal.replicate()
+
+                instance.properties[prop.name] = example_text
+
+                yield CaseNegativePatternExample(
+                    environment=env,
+                    cls=symbol,
+                    property_name=prop.name,
+                    example_name=example_name,
+                )
+
+        # endregion
+
+        # region Required violation
+
+        for prop in symbol.properties:
+            if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
+                continue
+
+            env, instance = replicator_minimal.replicate()
+
+            del instance.properties[prop.name]
+
+            yield CaseRequiredViolation(
+                environment=env, cls=symbol, property_name=prop.name
+            )
+
+        # endregion
+
+        # region Length violation
+
+        for prop in symbol.properties:
+            len_constraint = constraints_by_prop.len_constraints_by_property.get(
+                prop, None
+            )
+
+            if len_constraint is None:
+                continue
+
+            if len_constraint.min_value is not None and len_constraint.min_value > 0:
+                env, instance = replicator_minimal.replicate()
+
+                _make_instance_violate_min_len_constraint(
+                    instance=instance, prop=prop, len_constraint=len_constraint
+                )
+
+                yield CaseMinLengthViolation(
                     environment=env, cls=symbol, property_name=prop.name
                 )
 
-            # endregion
+            if len_constraint.max_value is not None:
+                env, instance = replicator_minimal.replicate()
 
-            # region Length violation
-
-            for prop in symbol.properties:
-                len_constraint = constraints_by_prop.len_constraints_by_property.get(
-                    prop, None
+                _make_instance_violate_max_len_constraint(
+                    instance=instance,
+                    path_segments=path_segments,
+                    prop=prop,
+                    len_constraint=len_constraint,
                 )
 
-                if len_constraint is None:
-                    continue
+                yield CaseMaxLengthViolation(
+                    environment=env, cls=symbol, property_name=prop.name
+                )
 
-                if (
-                    len_constraint.min_value is not None
-                    and len_constraint.min_value > 0
-                ):
-                    env, instance = replicator_minimal.replicate()
+        # endregion
 
-                    _make_instance_violate_min_len_constraint(
-                        instance=instance, prop=prop, len_constraint=len_constraint
-                    )
+        # region Break date-time with UTC with February 29th
 
-                    yield CaseMinLengthViolation(
+        date_time_stamp_utc_symbol = symbol_table.must_find(
+            Identifier("Date_time_stamp_UTC")
+        )
+        assert isinstance(date_time_stamp_utc_symbol, intermediate.ConstrainedPrimitive)
+
+        for prop in symbol.properties:
+            type_anno = intermediate.beneath_optional(prop.type_annotation)
+            if (
+                isinstance(type_anno, intermediate.OurTypeAnnotation)
+                and type_anno.symbol is date_time_stamp_utc_symbol
+            ):
+                env, instance = replicator_minimal.replicate()
+
+                with _extended_path(path_segments, [prop.name]):
+                    time_of_day = _generate_time_of_day(path_segments=path_segments)
+
+                    instance.properties[prop.name] = f"2022-02-29T{time_of_day}Z"
+
+                    yield CaseDateTimeStampUtcViolationOnFebruary29th(
                         environment=env, cls=symbol, property_name=prop.name
                     )
 
-                if len_constraint.max_value is not None:
-                    env, instance = replicator_minimal.replicate()
-
-                    _make_instance_violate_max_len_constraint(
-                        instance=instance,
-                        path_segments=path_segments,
-                        prop=prop,
-                        len_constraint=len_constraint,
-                    )
-
-                    yield CaseMaxLengthViolation(
-                        environment=env, cls=symbol, property_name=prop.name
-                    )
-
-            # endregion
-
-            # region Break date-time with UTC with February 29th
-
-            date_time_stamp_utc_symbol = symbol_table.must_find(
-                Identifier("Date_time_stamp_UTC")
-            )
-            assert isinstance(
-                date_time_stamp_utc_symbol, intermediate.ConstrainedPrimitive
-            )
-
-            for prop in symbol.properties:
-                type_anno = intermediate.beneath_optional(prop.type_annotation)
-                if (
-                    isinstance(type_anno, intermediate.OurTypeAnnotation)
-                    and type_anno.symbol is date_time_stamp_utc_symbol
-                ):
-                    env, instance = replicator_minimal.replicate()
-
-                    with _extended_path(path_segments, [prop.name]):
-                        time_of_day = _generate_time_of_day(path_segments=path_segments)
-
-                        instance.properties[prop.name] = f"2022-02-29T{time_of_day}Z"
-
-                        yield CaseDateTimeStampUtcViolationOnFebruary29th(
-                            environment=env, cls=symbol, property_name=prop.name
-                        )
-
-            # endregion
+        # endregion
 
     # region Generate positive and negative examples for Property and Range
 

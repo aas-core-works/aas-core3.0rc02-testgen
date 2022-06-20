@@ -9,8 +9,7 @@
           "max": "2011-02-29T01:02:03Z",
           "min": "2011-02-29T01:02:03Z",
           "modelType": "Range",
-          "valueType": "xs:dateTime",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTime"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P12345678901234567890DT12345678901234567890H12345678901234567890M",
           "min": "P12345678901234567890DT12345678901234567890H12345678901234567890M",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

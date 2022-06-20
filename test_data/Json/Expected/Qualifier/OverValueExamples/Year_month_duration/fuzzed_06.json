@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "-P547M",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

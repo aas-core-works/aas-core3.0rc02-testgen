@@ -9,8 +9,7 @@
           "max": "n3wT",
           "min": "n3wT",
           "modelType": "Range",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:int"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

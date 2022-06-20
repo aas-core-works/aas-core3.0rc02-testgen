@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "2022-04-01Z",
-          "valueType": "xs:dateTime",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:dateTime"
         }
       ]
     }

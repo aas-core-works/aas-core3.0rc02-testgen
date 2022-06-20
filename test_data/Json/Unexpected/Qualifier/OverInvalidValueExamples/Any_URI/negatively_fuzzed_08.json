@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "\ud8e8\ude54\u0005\u00bf.",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:anyURI"
         }
       ]
     }

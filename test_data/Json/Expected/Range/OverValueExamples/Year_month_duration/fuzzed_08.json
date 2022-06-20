@@ -9,8 +9,7 @@
           "max": "P929Y",
           "min": "P929Y",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

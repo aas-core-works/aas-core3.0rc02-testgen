@@ -9,8 +9,7 @@
           "max": "+57345",
           "min": "+57345",
           "modelType": "Range",
-          "valueType": "xs:positiveInteger",
-          "valuetype": "xs:int"
+          "valueType": "xs:positiveInteger"
         }
       ]
     }

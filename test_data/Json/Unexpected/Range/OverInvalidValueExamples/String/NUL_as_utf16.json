@@ -9,8 +9,7 @@
           "max": "\u0000",
           "min": "\u0000",
           "modelType": "Range",
-          "valueType": "xs:string",
-          "valuetype": "xs:int"
+          "valueType": "xs:string"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P72616Y2M",
           "min": "P72616Y2M",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P1Y3D",
           "min": "P1Y3D",
           "modelType": "Range",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

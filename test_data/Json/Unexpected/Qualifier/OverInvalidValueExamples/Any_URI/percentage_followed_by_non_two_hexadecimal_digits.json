@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "http://datypic.com#f% rag",
-          "valueType": "xs:anyURI",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:anyURI"
         }
       ]
     }

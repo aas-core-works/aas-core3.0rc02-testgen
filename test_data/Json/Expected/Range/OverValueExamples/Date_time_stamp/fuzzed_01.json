@@ -9,8 +9,7 @@
           "max": "0300-04-21T24:00:00.00+11:11",
           "min": "0300-04-21T24:00:00.00+11:11",
           "modelType": "Range",
-          "valueType": "xs:dateTimeStamp",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTimeStamp"
         }
       ]
     }

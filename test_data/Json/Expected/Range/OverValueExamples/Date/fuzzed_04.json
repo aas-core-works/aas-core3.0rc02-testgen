@@ -9,8 +9,7 @@
           "max": "-7506-08-02",
           "min": "-7506-08-02",
           "modelType": "Range",
-          "valueType": "xs:date",
-          "valuetype": "xs:int"
+          "valueType": "xs:date"
         }
       ]
     }

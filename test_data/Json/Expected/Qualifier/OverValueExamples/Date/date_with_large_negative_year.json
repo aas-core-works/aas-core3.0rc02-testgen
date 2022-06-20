@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "-12345678901234567890123456789012345678901234567890-04-01",
-          "valueType": "xs:date",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:date"
         }
       ]
     }

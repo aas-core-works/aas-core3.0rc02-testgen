@@ -9,8 +9,7 @@
           "max": "01:00:12+14:00",
           "min": "01:00:12+14:00",
           "modelType": "Range",
-          "valueType": "xs:time",
-          "valuetype": "xs:int"
+          "valueType": "xs:time"
         }
       ]
     }

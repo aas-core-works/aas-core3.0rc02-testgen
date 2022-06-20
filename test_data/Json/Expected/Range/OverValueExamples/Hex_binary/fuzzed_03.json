@@ -9,8 +9,7 @@
           "max": "FFFFfef3CB",
           "min": "FFFFfef3CB",
           "modelType": "Range",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:int"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

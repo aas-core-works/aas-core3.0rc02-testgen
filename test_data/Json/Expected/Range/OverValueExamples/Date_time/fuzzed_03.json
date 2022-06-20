@@ -9,8 +9,7 @@
           "max": "-665280014-06-30T21:15:16Z",
           "min": "-665280014-06-30T21:15:16Z",
           "modelType": "Range",
-          "valueType": "xs:dateTime",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTime"
         }
       ]
     }

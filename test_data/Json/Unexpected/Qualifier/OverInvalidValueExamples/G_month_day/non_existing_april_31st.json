@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "--04-31",
-          "valueType": "xs:gMonthDay",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:gMonthDay"
         }
       ]
     }

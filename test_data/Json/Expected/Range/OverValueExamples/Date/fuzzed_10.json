@@ -9,8 +9,7 @@
           "max": "0520-01-01",
           "min": "0520-01-01",
           "modelType": "Range",
-          "valueType": "xs:date",
-          "valuetype": "xs:int"
+          "valueType": "xs:date"
         }
       ]
     }

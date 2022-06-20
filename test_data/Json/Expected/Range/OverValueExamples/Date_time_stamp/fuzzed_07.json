@@ -9,8 +9,7 @@
           "max": "0371-08-25T20:39:03+07:32",
           "min": "0371-08-25T20:39:03+07:32",
           "modelType": "Range",
-          "valueType": "xs:dateTimeStamp",
-          "valuetype": "xs:int"
+          "valueType": "xs:dateTimeStamp"
         }
       ]
     }

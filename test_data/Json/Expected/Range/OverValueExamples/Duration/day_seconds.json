@@ -9,8 +9,7 @@
           "max": "P1DT2S",
           "min": "P1DT2S",
           "modelType": "Range",
-          "valueType": "xs:duration",
-          "valuetype": "xs:int"
+          "valueType": "xs:duration"
         }
       ]
     }

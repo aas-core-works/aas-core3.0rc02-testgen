@@ -9,8 +9,7 @@
           "max": "123",
           "min": "123",
           "modelType": "Range",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:int"
+          "valueType": "xs:hexBinary"
         }
       ]
     }

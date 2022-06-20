@@ -9,8 +9,7 @@
           "max": "-P11DT142M",
           "min": "-P11DT142M",
           "modelType": "Range",
-          "valueType": "xs:duration",
-          "valuetype": "xs:int"
+          "valueType": "xs:duration"
         }
       ]
     }

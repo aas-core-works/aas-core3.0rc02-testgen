@@ -9,8 +9,7 @@
           "max": "\ud896\udff4",
           "min": "\ud896\udff4",
           "modelType": "Range",
-          "valueType": "xs:boolean",
-          "valuetype": "xs:int"
+          "valueType": "xs:boolean"
         }
       ]
     }

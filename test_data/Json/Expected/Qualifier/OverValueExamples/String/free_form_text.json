@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "some free & <free> \u1984 form text",
-          "valueType": "xs:string",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:string"
         }
       ]
     }

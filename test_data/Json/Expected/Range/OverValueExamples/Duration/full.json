@@ -9,8 +9,7 @@
           "max": "P1Y2M3DT5H20M30.123S",
           "min": "P1Y2M3DT5H20M30.123S",
           "modelType": "Range",
-          "valueType": "xs:duration",
-          "valuetype": "xs:int"
+          "valueType": "xs:duration"
         }
       ]
     }

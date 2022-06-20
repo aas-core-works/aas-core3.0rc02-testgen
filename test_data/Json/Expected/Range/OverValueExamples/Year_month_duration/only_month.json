@@ -9,8 +9,7 @@
           "max": "P2M",
           "min": "P2M",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

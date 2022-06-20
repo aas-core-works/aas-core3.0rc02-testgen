@@ -9,8 +9,7 @@
           "max": "0119-12-14:00",
           "min": "0119-12-14:00",
           "modelType": "Range",
-          "valueType": "xs:gYearMonth",
-          "valuetype": "xs:int"
+          "valueType": "xs:gYearMonth"
         }
       ]
     }

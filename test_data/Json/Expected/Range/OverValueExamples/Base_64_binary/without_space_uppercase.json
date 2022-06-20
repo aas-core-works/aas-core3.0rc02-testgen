@@ -9,8 +9,7 @@
           "max": "0FB8",
           "min": "0FB8",
           "modelType": "Range",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:int"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

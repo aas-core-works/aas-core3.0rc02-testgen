@@ -9,8 +9,7 @@
           "max": "0061707",
           "min": "0061707",
           "modelType": "Range",
-          "valueType": "xs:decimal",
-          "valuetype": "xs:int"
+          "valueType": "xs:decimal"
         }
       ]
     }

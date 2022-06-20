@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "j j5 n",
-          "valueType": "xs:base64Binary",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:base64Binary"
         }
       ]
     }

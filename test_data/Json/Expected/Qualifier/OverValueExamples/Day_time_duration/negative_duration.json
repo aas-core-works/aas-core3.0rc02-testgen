@@ -7,8 +7,7 @@
         {
           "type": "something_random_cfd39ba4",
           "value": "-P120DT10H30M",
-          "valueType": "xs:dayTimeDuration",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:dayTimeDuration"
         }
       ]
     }

@@ -9,8 +9,7 @@
           "max": "P-10Y",
           "min": "P-10Y",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

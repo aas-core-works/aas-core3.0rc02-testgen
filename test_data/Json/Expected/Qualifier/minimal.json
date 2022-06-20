@@ -6,8 +6,7 @@
       "qualifiers": [
         {
           "type": "something_random_cfd39ba4",
-          "valueType": "xs:hexBinary",
-          "valuetype": "xs:boolean"
+          "valueType": "xs:boolean"
         }
       ]
     }

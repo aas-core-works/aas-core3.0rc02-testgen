@@ -9,8 +9,7 @@
           "max": "0454",
           "min": "0454",
           "modelType": "Range",
-          "valueType": "xs:unsignedInt",
-          "valuetype": "xs:int"
+          "valueType": "xs:unsignedInt"
         }
       ]
     }

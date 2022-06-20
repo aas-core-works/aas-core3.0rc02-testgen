@@ -9,8 +9,7 @@
           "max": "NaN",
           "min": "NaN",
           "modelType": "Range",
-          "valueType": "xs:double",
-          "valuetype": "xs:int"
+          "valueType": "xs:double"
         }
       ]
     }

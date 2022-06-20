@@ -9,8 +9,7 @@
           "max": "103",
           "min": "103",
           "modelType": "Range",
-          "valueType": "xs:byte",
-          "valuetype": "xs:int"
+          "valueType": "xs:byte"
         }
       ]
     }

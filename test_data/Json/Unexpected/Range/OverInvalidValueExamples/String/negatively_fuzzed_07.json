@@ -9,8 +9,7 @@
           "max": "\ud937\udf63\u0000'\u001f \ud918\udeacxx\u00cf\u00d6\nwf",
           "min": "\ud937\udf63\u0000'\u001f \ud918\udeacxx\u00cf\u00d6\nwf",
           "modelType": "Range",
-          "valueType": "xs:string",
-          "valuetype": "xs:int"
+          "valueType": "xs:string"
         }
       ]
     }

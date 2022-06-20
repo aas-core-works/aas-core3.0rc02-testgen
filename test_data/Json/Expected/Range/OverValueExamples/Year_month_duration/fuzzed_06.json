@@ -9,8 +9,7 @@
           "max": "-P547M",
           "min": "-P547M",
           "modelType": "Range",
-          "valueType": "xs:yearMonthDuration",
-          "valuetype": "xs:int"
+          "valueType": "xs:yearMonthDuration"
         }
       ]
     }

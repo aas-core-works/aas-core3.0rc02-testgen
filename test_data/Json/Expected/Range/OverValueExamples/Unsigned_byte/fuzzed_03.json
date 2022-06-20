@@ -9,8 +9,7 @@
           "max": "232",
           "min": "232",
           "modelType": "Range",
-          "valueType": "xs:unsignedByte",
-          "valuetype": "xs:int"
+          "valueType": "xs:unsignedByte"
         }
       ]
     }
