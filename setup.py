@@ -46,7 +46,7 @@ setup(
             "pydocstyle>=2.1.1<3",
             "coverage>=6,<7",
             "twine",
-            "aas-core-meta==2022.6.19",
+            "aas-core-meta==2022.6.20",
             "aas-core-codegen==0.0.13",
             "hypothesis==6.46.3",
         ]

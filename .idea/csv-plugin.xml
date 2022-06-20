@@ -24,6 +24,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\aas_core3_0_rc02_testgen\generation.py">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\test_data\Json\Expected\BasicEventElement\lastUpdateOverPatternExamples\fuzzed_01.json">
           <value>
             <Attribute>

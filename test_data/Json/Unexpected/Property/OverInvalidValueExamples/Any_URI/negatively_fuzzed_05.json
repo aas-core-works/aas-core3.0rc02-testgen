@@ -5,7 +5,7 @@
       "modelType": "Submodel",
       "submodelElements": [
         {
-          "idShort": "some_id_short_5a3e7c0f",
+          "idShort": "some_id_short_10b21b1b",
           "modelType": "Property",
           "value": "''\u00ff\udbe3\udc1a\uc3b8\u00c8\u00ba\u00ab\u00d9",
           "valueType": "xs:anyURI"
