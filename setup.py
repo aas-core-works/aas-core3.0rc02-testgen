@@ -49,6 +49,7 @@ setup(
             "aas-core-meta==2022.6.20",
             "aas-core-codegen==0.0.15",
             "hypothesis==6.46.3",
+            "xmlschema==1.10.0",
         ]
     },
     # fmt: on
