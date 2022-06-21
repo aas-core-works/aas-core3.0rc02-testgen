@@ -161,8 +161,8 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         return (
             base_pth
             / "Unexpected"
+            / "InvalidMinMaxExamples"
             / cls_name
-            / "OverInvalidMinMaxExamples"
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.json"
         )
