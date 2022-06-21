@@ -1666,7 +1666,10 @@ def generate(
                 # If it is a primitive, supply a global reference.
                 # If it is not a primitive, supply a string.
 
-                if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation):
+                if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation) or (
+                    isinstance(type_anno, intermediate.OurTypeAnnotation)
+                    and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
+                ):
                     with _extended_path(path_segments, [prop.name]):
                         instance.properties[prop.name] = _generate_global_reference(
                             path_segments=path_segments
@@ -1675,6 +1678,10 @@ def generate(
                 else:
                     with _extended_path(path_segments, [prop.name]):
                         instance.properties[prop.name] = "Unexpected string value"
+
+                yield CaseTypeViolation(
+                    environment=env, cls=symbol, property_name=prop.name
+                )
 
             # endregion
 
