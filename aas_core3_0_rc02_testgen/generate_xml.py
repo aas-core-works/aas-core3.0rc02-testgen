@@ -47,11 +47,11 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Expected"
-                / cls_name
-                / f"{prop_name}OverPatternExamples"
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Expected"
+            / cls_name
+            / f"{prop_name}OverPatternExamples"
+            / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseNegativePatternExample):
@@ -59,12 +59,12 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "PatternViolation"
-                / cls_name
-                / prop_name
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "PatternViolation"
+            / cls_name
+            / prop_name
+            / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseRequiredViolation):
@@ -72,11 +72,11 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "RequiredViolation"
-                / cls_name
-                / f"{prop_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "RequiredViolation"
+            / cls_name
+            / f"{prop_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseMinLengthViolation):
@@ -84,11 +84,11 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "MinLengthViolation"
-                / cls_name
-                / f"{prop_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "MinLengthViolation"
+            / cls_name
+            / f"{prop_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseMaxLengthViolation):
@@ -96,11 +96,11 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "MaxLengthViolation"
-                / cls_name
-                / f"{prop_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "MaxLengthViolation"
+            / cls_name
+            / f"{prop_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseDateTimeStampUtcViolationOnFebruary29th):
@@ -108,59 +108,59 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "DateTimeStampUtcViolationOnFebruary29th"
-                / cls_name
-                / f"{prop_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "DateTimeStampUtcViolationOnFebruary29th"
+            / cls_name
+            / f"{prop_name}.xml"
         )
 
     elif isinstance(test_case, generation.CasePositiveValueExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
-                base_pth
-                / "Expected"
-                / cls_name
-                / "OverValueExamples"
-                / test_case.data_type_def_literal.name
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Expected"
+            / cls_name
+            / "OverValueExamples"
+            / test_case.data_type_def_literal.name
+            / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseNegativeValueExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "InvalidValueExamples"
-                / cls_name
-                / test_case.data_type_def_literal.name
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "InvalidValueExamples"
+            / cls_name
+            / test_case.data_type_def_literal.name
+            / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CasePositiveMinMaxExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
-                base_pth
-                / "Expected"
-                / cls_name
-                / "OverMinMaxExamples"
-                / test_case.data_type_def_literal.name
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Expected"
+            / cls_name
+            / "OverMinMaxExamples"
+            / test_case.data_type_def_literal.name
+            / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseNegativeMinMaxExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
-                base_pth
-                / "Unexpected"
-                / "InvalidMinMaxExamples"
-                / cls_name
-                / test_case.data_type_def_literal.name
-                / f"{test_case.example_name}.xml"
+            base_pth
+            / "Unexpected"
+            / "InvalidMinMaxExamples"
+            / cls_name
+            / test_case.data_type_def_literal.name
+            / f"{test_case.example_name}.xml"
         )
 
     else:
@@ -199,7 +199,7 @@ class _Serializer:
 
     # noinspection PyMethodMayBeStatic
     def _serialize_primitive(
-            self, value: generation.PrimitiveValueUnion, doc: minidom.Document
+        self, value: generation.PrimitiveValueUnion, doc: minidom.Document
     ) -> minidom.Text:
         text = None  # type: Optional[str]
 
@@ -230,7 +230,7 @@ class _Serializer:
         return text_node
 
     def _serialize_instance(
-            self, instance: generation.Instance, doc: minidom.Document
+        self, instance: generation.Instance, doc: minidom.Document
     ) -> List[minidom.Element]:
         sequence = []  # type: List[minidom.Element]
 
@@ -274,8 +274,8 @@ class _Serializer:
                 )
 
                 if (
-                        a_cls.serialization is not None
-                        and a_cls.serialization.with_model_type
+                    a_cls.serialization is not None
+                    and a_cls.serialization.with_model_type
                 ):
                     model_type_node = doc.createElement(
                         aas_core_codegen.naming.xml_class_name(prop_value.model_type)
@@ -301,7 +301,7 @@ class _Serializer:
         return sequence
 
     def _serialize_list_of_instances(
-            self, list_of_instances: generation.ListOfInstances, doc: minidom.Document
+        self, list_of_instances: generation.ListOfInstances, doc: minidom.Document
     ) -> List[minidom.Element]:
         sequence = []  # type: List[minidom.Element]
 
@@ -321,7 +321,8 @@ class _Serializer:
 
 
 _XML_1_0_TEXT_RE = re.compile(
-    r'^[\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*$')
+    r"^[\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*$"
+)
 
 
 def _conforms_to_xml_1_0(value: generation.ValueUnion) -> bool:
@@ -358,7 +359,7 @@ def generate(test_data_dir: pathlib.Path) -> None:
     serializer = _Serializer(symbol_table=symbol_table)
 
     for test_case in generation.generate(
-            symbol_table=symbol_table, constraints_by_class=constraints_by_class
+        symbol_table=symbol_table, constraints_by_class=constraints_by_class
     ):
         relative_pth = _relative_path(test_case=test_case)
 
@@ -366,7 +367,8 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
         if not _conforms_to_xml_1_0(test_case.environment):
             print(
-                f"The test case can not be represented in XML 1.0, skipping: {relative_pth}")
+                f"The test case can not be represented in XML 1.0, skipping: {relative_pth}"
+            )
             continue
 
         parent = pth.parent
