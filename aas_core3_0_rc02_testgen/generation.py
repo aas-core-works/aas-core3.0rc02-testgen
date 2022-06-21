@@ -1601,6 +1601,34 @@ def generate(
 
     handyman = _Handyman(symbol_table=symbol_table)
 
+    # region Generate the minimal and complete example for the Environment
+
+    environment_cls = symbol_table.must_find(Identifier("Environment"))
+    assert isinstance(environment_cls, intermediate.ConcreteClass)
+
+    # NOTE (mristin, 2022-06-21):
+    # This is a special case as we do not reach the environment from an environment.
+    instance = _generate_minimal_instance(
+        cls=environment_cls,
+        path_segments=[],
+        constraints_by_class=constraints_by_class,
+        symbol_table=symbol_table,
+    )
+
+    yield CaseMinimal(environment=instance, cls=environment_cls)
+
+    _make_minimal_instance_complete(
+        instance=instance,
+        path_segments=[],
+        cls=environment_cls,
+        constraints_by_class=constraints_by_class,
+        symbol_table=symbol_table,
+    )
+
+    yield CaseComplete(environment=instance, cls=environment_cls)
+
+    # endregion
+
     for symbol in symbol_table.symbols:
         if not isinstance(symbol, intermediate.ConcreteClass):
             continue
