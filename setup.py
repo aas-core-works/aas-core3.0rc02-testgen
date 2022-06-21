@@ -47,7 +47,7 @@ setup(
             "coverage>=6,<7",
             "twine",
             "aas-core-meta==2022.6.20",
-            "aas-core-codegen==0.0.13",
+            "aas-core-codegen==0.0.15",
             "hypothesis==6.46.3",
         ]
     },
