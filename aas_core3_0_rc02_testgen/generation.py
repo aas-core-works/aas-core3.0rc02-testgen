@@ -729,9 +729,16 @@ class _Handyman:
     generate them correctly in the first pass.
     """
 
-    def __init__(self, symbol_table: intermediate.SymbolTable) -> None:
+    def __init__(
+        self,
+        symbol_table: intermediate.SymbolTable,
+        constraints_by_class: MutableMapping[
+            intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
+        ],
+    ) -> None:
         """Initialize with the given values."""
         self.symbol_table = symbol_table
+        self.constraints_by_class = constraints_by_class
 
         self._dispatch_concrete = {
             "Asset_administration_shell": _Handyman._fix_asset_administration_shell,
@@ -1078,14 +1085,57 @@ class _Handyman:
     def _fix_submodel_element_list(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
-        # Fix that ID-shorts are not defined for the items of a submodel element list
         value = instance.properties.get("value", None)
         if value is not None:
-            assert isinstance(value, ListOfInstances)
+            # NOTE (mristin, 2022-06-22):
+            # Re-create the elements according to a fixed recipe. This is brutish, but
+            # otherwise it is too complex to get the fixing logic right.
 
-            for item in value.values:
-                if "id_short" in item.properties:
-                    del item.properties["id_short"]
+            property_cls = self.symbol_table.must_find(Identifier("Property"))
+            assert isinstance(property_cls, intermediate.ConcreteClass)
+
+            data_type_def_xsd_enum = self.symbol_table.must_find(
+                Identifier("Data_type_def_XSD")
+            )
+            assert isinstance(data_type_def_xsd_enum, intermediate.Enumeration)
+
+            xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
+
+            aas_submodel_elements_enum = self.symbol_table.must_find(
+                Identifier("AAS_submodel_elements")
+            )
+            assert isinstance(aas_submodel_elements_enum, intermediate.Enumeration)
+
+            property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
+
+            semantic_id = _generate_global_reference(path_segments)
+
+            with _extend_in_place(path_segments, ["value", 0]):
+                value0 = _generate_minimal_instance(
+                    cls=property_cls,
+                    path_segments=path_segments,
+                    constraints_by_class=self.constraints_by_class,
+                    symbol_table=self.symbol_table,
+                )
+                value0.properties["value_type"] = xs_boolean_literal.value
+                value0.properties["semantic_id"] = semantic_id
+
+            with _extend_in_place(path_segments, ["value", 1]):
+                value1 = _generate_minimal_instance(
+                    cls=property_cls,
+                    path_segments=path_segments,
+                    constraints_by_class=self.constraints_by_class,
+                    symbol_table=self.symbol_table,
+                )
+                value1.properties["value_type"] = xs_boolean_literal.value
+                value1.properties["semantic_id"] = semantic_id
+
+            values = [value0, value1]
+
+            instance.properties["value"] = ListOfInstances(values=values)
+            instance.properties["type_value_list_element"] = property_literal.value
+            instance.properties["value_type_list_element"] = xs_boolean_literal.value
+            instance.properties["semantic_id_list_element"] = semantic_id
 
         self._recurse_into_properties(instance=instance, path_segments=path_segments)
 
@@ -1485,6 +1535,30 @@ class CaseEnumViolation(Case):
         self.prop = prop
 
 
+class CasePositiveManual(Case):
+    """Represent a custom-tailored positive case."""
+
+    def __init__(
+        self, environment: Instance, cls: intermediate.ConcreteClass, name: str
+    ) -> None:
+        """Initialize with the given values."""
+        Case.__init__(self, environment=environment, expected=True)
+        self.cls = cls
+        self.name = name
+
+
+class CaseConstraintViolation(Case):
+    """Represent a custom-tailored negative case that violates a constraint."""
+
+    def __init__(
+        self, environment: Instance, cls: intermediate.ConcreteClass, name: str
+    ) -> None:
+        """Initialize with the given values."""
+        Case.__init__(self, environment=environment, expected=False)
+        self.cls = cls
+        self.name = name
+
+
 CaseUnion = Union[
     CaseMinimal,
     CaseComplete,
@@ -1500,6 +1574,8 @@ CaseUnion = Union[
     CasePositiveMinMaxExample,
     CaseNegativeMinMaxExample,
     CaseEnumViolation,
+    CasePositiveManual,
+    CaseConstraintViolation,
 ]
 
 aas_core_codegen.common.assert_union_of_descendants_exhaustive(
@@ -1619,6 +1695,253 @@ def _make_instance_violate_max_len_constraint(
         )
 
 
+def _generate_additional_cases_for_submodel_element_list(
+    class_graph: ontology.ClassGraph,
+    symbol_table: intermediate.SymbolTable,
+    constraints_by_class: MutableMapping[
+        intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
+    ],
+    handyman: _Handyman,
+) -> Iterator[CaseUnion]:
+    # region Dependencies
+
+    cls = symbol_table.must_find(Identifier("Submodel_element_list"))
+    assert isinstance(cls, intermediate.ConcreteClass)
+
+    property_cls = symbol_table.must_find(Identifier("Property"))
+    assert isinstance(property_cls, intermediate.ConcreteClass)
+
+    data_type_def_xsd_enum = symbol_table.must_find(Identifier("Data_type_def_XSD"))
+    assert isinstance(data_type_def_xsd_enum, intermediate.Enumeration)
+
+    xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
+    xs_int_literal = data_type_def_xsd_enum.literals_by_name["Int"]
+
+    aas_submodel_elements_enum = symbol_table.must_find(
+        Identifier("AAS_submodel_elements")
+    )
+    assert isinstance(aas_submodel_elements_enum, intermediate.Enumeration)
+
+    property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
+
+    range_cls = symbol_table.must_find(Identifier("Range"))
+    assert isinstance(range_cls, intermediate.ConcreteClass)
+
+    semantic_id = _generate_global_reference(path_segments=["some-dummy"])
+    another_semantic_id = _generate_global_reference(path_segments=["another-dummy"])
+
+    # endregion
+
+    # region Prepare replicator
+
+    env, path_segments = _generate_minimal_instance_in_minimal_environment(
+        cls=cls,
+        class_graph=class_graph,
+        constraints_by_class=constraints_by_class,
+        symbol_table=symbol_table,
+    )
+    handyman.fix_instance(instance=env, path_segments=[])
+
+    instance = _dereference(environment=env, path_segments=path_segments)
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_boolean_literal.value
+        value0.properties["semantic_id"] = semantic_id
+
+    with _extend_in_place(path_segments, ["value", 1]):
+        value1 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value1.properties["value_type"] = xs_boolean_literal.value
+        value1.properties["semantic_id"] = semantic_id
+
+    values = [value0, value1]
+
+    instance.properties["value"] = ListOfInstances(values=values)
+    instance.properties["type_value_list_element"] = property_literal.value
+    instance.properties["value_type_list_element"] = xs_boolean_literal.value
+    instance.properties["semantic_id_list_element"] = semantic_id
+
+    replicator = _EnvironmentInstanceReplicator(
+        environment=env, path_to_instance_from_environment=path_segments
+    )
+
+    # region Expected: one child without semantic ID
+
+    env, instance = replicator.replicate()
+    assert isinstance(instance.properties["value"], ListOfInstances)
+    del instance.properties["value"].values[0].properties["semantic_id"]
+
+    yield CasePositiveManual(
+        environment=env, cls=cls, name="one_child_without_semantic_id"
+    )
+
+    # endregion
+
+    # region Expected: no semantic_id_list_element
+
+    env, instance = replicator.replicate()
+    del instance.properties["semantic_id_list_element"]
+
+    yield CasePositiveManual(
+        environment=env, cls=cls, name="no_semantic_id_list_element"
+    )
+
+    # endregion
+
+    # region Unexpected: values property and range against type_value_list_element
+
+    env, instance = replicator.replicate()
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_boolean_literal.value
+        value0.properties["semantic_id"] = semantic_id
+
+    with _extend_in_place(path_segments, ["value", 1]):
+        value1 = _generate_minimal_instance(
+            cls=range_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value1.properties["value_type"] = xs_boolean_literal.value
+        value1.properties["semantic_id"] = semantic_id
+
+    instance.properties["value"] = ListOfInstances(values=[value0, value1])
+
+    yield CaseConstraintViolation(
+        environment=env,
+        cls=cls,
+        name="against_type_value_list_element",
+    )
+
+    # endregion
+
+    # region Unexpected: a property against value_type_list_element
+
+    env, instance = replicator.replicate()
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_int_literal.value
+        value0.properties["semantic_id"] = semantic_id
+
+    instance.properties["value"] = ListOfInstances(values=[value0])
+
+    yield CaseConstraintViolation(
+        environment=env,
+        cls=cls,
+        name="against_value_type_list_element",
+    )
+
+    # endregion
+
+    # region Unexpected: against semantic_id_list_element
+
+    env, instance = replicator.replicate()
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_boolean_literal.value
+        value0.properties["semantic_id"] = another_semantic_id
+
+    instance.properties["value"] = ListOfInstances(values=[value0])
+
+    yield CaseConstraintViolation(
+        environment=env,
+        cls=cls,
+        name="against_semantic_id_list_element",
+    )
+
+    # endregion
+
+    # region Unexpected: no semantic_id_list_element, but mismatch in values
+
+    env, instance = replicator.replicate()
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_boolean_literal.value
+        value0.properties["semantic_id"] = semantic_id
+
+    with _extend_in_place(path_segments, ["value", 1]):
+        value1 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value1.properties["value_type"] = xs_boolean_literal.value
+        value1.properties["semantic_id"] = another_semantic_id
+
+    instance.properties["value"] = ListOfInstances(values=[value0, value1])
+    del instance.properties["semantic_id_list_element"]
+
+    yield CaseConstraintViolation(
+        environment=env,
+        cls=cls,
+        name="no_semantic_id_list_element_but_semantic_id_mismatch_in_value",
+    )
+
+    # endregion
+
+    # region Unexpected: element with ID-short
+
+    env, instance = replicator.replicate()
+
+    with _extend_in_place(path_segments, ["value", 0]):
+        value0 = _generate_minimal_instance(
+            cls=property_cls,
+            path_segments=path_segments,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+        value0.properties["value_type"] = xs_boolean_literal.value
+        value0.properties["semantic_id"] = semantic_id
+
+        value0.properties["id_short"] = "unexpected"
+
+    instance.properties["value"] = ListOfInstances(values=[value0])
+
+    yield CaseConstraintViolation(
+        environment=env,
+        cls=cls,
+        name="id_short_in_a_value",
+    )
+
+    # endregion
+
+
 def generate(
     symbol_table: intermediate.SymbolTable,
     constraints_by_class: MutableMapping[
@@ -1636,7 +1959,9 @@ def generate(
         ),
     )
 
-    handyman = _Handyman(symbol_table=symbol_table)
+    handyman = _Handyman(
+        symbol_table=symbol_table, constraints_by_class=constraints_by_class
+    )
 
     # region Generate the minimal and complete example for the Environment
 
@@ -1694,61 +2019,57 @@ def generate(
 
         # endregion
 
-        # BEFORE-RELEASE (mristin, 2022-06-19):
-        # Remove this ``if`` and implement a proper function once we tested the
-        # SDK with XML.
-        if symbol.name != "Submodel_element_list":
-            # region Complete example
+        # region Complete example
 
-            env, instance = replicator_minimal.replicate()
+        env, instance = replicator_minimal.replicate()
 
-            _make_minimal_instance_complete(
-                instance=instance,
-                path_segments=path_segments,
-                cls=symbol,
-                constraints_by_class=constraints_by_class,
-                symbol_table=symbol_table,
+        _make_minimal_instance_complete(
+            instance=instance,
+            path_segments=path_segments,
+            cls=symbol,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+
+        handyman.fix_instance(instance=env, path_segments=[])
+
+        yield CaseComplete(environment=env, cls=symbol)
+
+        replicator_complete = _EnvironmentInstanceReplicator(
+            environment=env, path_to_instance_from_environment=path_segments
+        )
+
+        # endregion
+
+        # region Type violation
+
+        for prop in symbol.properties:
+            env, instance = replicator_complete.replicate()
+
+            type_anno = intermediate.beneath_optional(prop.type_annotation)
+
+            # NOTE (mristin, 2022-06-20):
+            # If it is a primitive, supply a global reference.
+            # If it is not a primitive, supply a string.
+
+            if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation) or (
+                isinstance(type_anno, intermediate.OurTypeAnnotation)
+                and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
+            ):
+                with _extend_in_place(path_segments, [prop.name]):
+                    instance.properties[prop.name] = _generate_global_reference(
+                        path_segments=path_segments
+                    )
+
+            else:
+                with _extend_in_place(path_segments, [prop.name]):
+                    instance.properties[prop.name] = "Unexpected string value"
+
+            yield CaseTypeViolation(
+                environment=env, cls=symbol, property_name=prop.name
             )
 
-            handyman.fix_instance(instance=env, path_segments=[])
-
-            yield CaseComplete(environment=env, cls=symbol)
-
-            replicator_complete = _EnvironmentInstanceReplicator(
-                environment=env, path_to_instance_from_environment=path_segments
-            )
-
-            # endregion
-
-            # region Type violation
-
-            for prop in symbol.properties:
-                env, instance = replicator_complete.replicate()
-
-                type_anno = intermediate.beneath_optional(prop.type_annotation)
-
-                # NOTE (mristin, 2022-06-20):
-                # If it is a primitive, supply a global reference.
-                # If it is not a primitive, supply a string.
-
-                if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation) or (
-                    isinstance(type_anno, intermediate.OurTypeAnnotation)
-                    and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
-                ):
-                    with _extend_in_place(path_segments, [prop.name]):
-                        instance.properties[prop.name] = _generate_global_reference(
-                            path_segments=path_segments
-                        )
-
-                else:
-                    with _extend_in_place(path_segments, [prop.name]):
-                        instance.properties[prop.name] = "Unexpected string value"
-
-                yield CaseTypeViolation(
-                    environment=env, cls=symbol, property_name=prop.name
-                )
-
-            # endregion
+        # endregion
 
         # region Positive and negative pattern examples
 
@@ -2024,6 +2345,13 @@ def generate(
         yield CaseEnumViolation(environment=minimal_env, enum=enum, cls=cls, prop=prop)
 
     # endregion
+
+    yield from _generate_additional_cases_for_submodel_element_list(
+        class_graph=class_graph,
+        symbol_table=symbol_table,
+        constraints_by_class=constraints_by_class,
+        handyman=handyman,
+    )
 
     # BEFORE-RELEASE (mristin, 2022-06-19):
     # Manually write Unexpected/ConstraintViolation/{class name}/
