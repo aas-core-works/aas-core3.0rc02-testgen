@@ -167,6 +167,19 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
             / f"{test_case.example_name}.json"
         )
 
+    elif isinstance(test_case, generation.CaseEnumViolation):
+        enum_name = aas_core_codegen.naming.json_model_type(test_case.enum.name)
+        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
+        prop_name = aas_core_codegen.naming.json_property(test_case.prop.name)
+
+        return (
+            base_pth
+            / "Unexpected"
+            / "EnumViolation"
+            / enum_name
+            / f"{cls_name}-{prop_name}.json"
+        )
+
     else:
         aas_core_codegen.common.assert_never(test_case)
 

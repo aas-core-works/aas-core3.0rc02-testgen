@@ -163,6 +163,19 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
             / f"{test_case.example_name}.xml"
         )
 
+    elif isinstance(test_case, generation.CaseEnumViolation):
+        enum_name = aas_core_codegen.naming.xml_class_name(test_case.enum.name)
+        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
+        prop_name = aas_core_codegen.naming.xml_property(test_case.prop.name)
+
+        return (
+            base_pth
+            / "Unexpected"
+            / "EnumViolation"
+            / enum_name
+            / f"{cls_name}-{prop_name}.xml"
+        )
+
     else:
         aas_core_codegen.common.assert_never(test_case)
 

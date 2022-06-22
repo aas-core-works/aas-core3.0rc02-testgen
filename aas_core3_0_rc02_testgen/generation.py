@@ -18,6 +18,7 @@ from typing import (
     Tuple,
     Iterable,
     Iterator,
+    Set,
 )
 
 import aas_core_codegen.common
@@ -412,7 +413,7 @@ def _generate_primitive_value(
 
 
 @contextlib.contextmanager
-def _extended_path(
+def _extend_in_place(
     path_segments: List[Union[str, int]], extension: Iterable[Union[str, int]]
 ) -> Iterator[Any]:
     """Extend the ``path_segments`` with the ``extension`` and revert it on exit."""
@@ -437,7 +438,7 @@ def _generate_model_reference(
         aas_core_meta.v3rc2.Key_types.Concept_description,
         aas_core_meta.v3rc2.Key_types.Submodel,
     ):
-        with _extended_path(path_segments, ["keys", 0, "value"]):
+        with _extend_in_place(path_segments, ["keys", 0, "value"]):
             props["keys"] = ListOfInstances(
                 values=[
                     Instance(
@@ -453,7 +454,7 @@ def _generate_model_reference(
             )
 
     elif expected_type is aas_core_meta.v3rc2.Key_types.Referable:
-        with _extended_path(path_segments, ["keys", 0, "value"]):
+        with _extend_in_place(path_segments, ["keys", 0, "value"]):
             key0 = Instance(
                 properties=collections.OrderedDict(
                     [
@@ -464,7 +465,7 @@ def _generate_model_reference(
                 model_type=Identifier("Key"),
             )
 
-        with _extended_path(path_segments, ["keys", 1, "value"]):
+        with _extend_in_place(path_segments, ["keys", 1, "value"]):
             key1 = Instance(
                 properties=collections.OrderedDict(
                     [
@@ -494,7 +495,7 @@ def _generate_global_reference(
     props = collections.OrderedDict()  # type: OrderedDict[str, ValueUnion]
     props["type"] = aas_core_meta.v3rc2.Reference_types.Global_reference.value
 
-    with _extended_path(path_segments, ["keys", 0, "value"]):
+    with _extend_in_place(path_segments, ["keys", 0, "value"]):
         key = Instance(
             properties=collections.OrderedDict(
                 [
@@ -589,7 +590,7 @@ def _generate_property_value(
                 f"but got: {type_annotation}; please contact the developers"
             )
 
-        with _extended_path(path_segments, [0]):
+        with _extend_in_place(path_segments, [0]):
             instance = generate_instance(type_annotation.items.symbol, path_segments)
 
         result = ListOfInstances(values=[instance])
@@ -662,7 +663,7 @@ def _generate_concrete_minimal_instance(
         if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
             continue
 
-        with _extended_path(path_segments, [prop.name]):
+        with _extend_in_place(path_segments, [prop.name]):
             props[prop.name] = _generate_property_value(
                 type_annotation=prop.type_annotation,
                 path_segments=path_segments,
@@ -813,7 +814,7 @@ class _Handyman:
     ) -> None:
         """Fix the instances recursively in-place."""
         for i, instance in enumerate(list_of_instances.values):
-            with _extended_path(path_segments, [i]):
+            with _extend_in_place(path_segments, [i]):
                 self.fix_instance(instance=instance, path_segments=path_segments)
 
     def _recurse_into_properties(
@@ -827,11 +828,11 @@ class _Handyman:
                 pass
 
             elif isinstance(prop_value, Instance):
-                with _extended_path(path_segments, [prop_name]):
+                with _extend_in_place(path_segments, [prop_name]):
                     self.fix_instance(prop_value, path_segments)
 
             elif isinstance(prop_value, ListOfInstances):
-                with _extended_path(path_segments, [prop_name]):
+                with _extend_in_place(path_segments, [prop_name]):
                     self.fix_list_of_instances(prop_value, path_segments)
 
             else:
@@ -842,7 +843,7 @@ class _Handyman:
     ) -> None:
         # Fix that the observed is a proper model reference
         if "observed" in instance.properties:
-            with _extended_path(path_segments, ["observed"]):
+            with _extend_in_place(path_segments, ["observed"]):
                 instance.properties["observed"] = _generate_model_reference(
                     expected_type=aas_core_meta.v3rc2.Key_types.Referable,
                     path_segments=path_segments,
@@ -860,7 +861,7 @@ class _Handyman:
 
         # Fix that the message broker is a proper model reference
         if "message_broker" in instance.properties:
-            with _extended_path(path_segments, ["message_broker"]):
+            with _extend_in_place(path_segments, ["message_broker"]):
                 instance.properties["message_broker"] = _generate_model_reference(
                     expected_type=aas_core_meta.v3rc2.Key_types.Referable,
                     path_segments=path_segments,
@@ -873,7 +874,7 @@ class _Handyman:
     ) -> None:
         # Fix the invariant that the derivedFrom is a reference to a shell
         if "derived_from" in instance.properties:
-            with _extended_path(path_segments, ["derived_from"]):
+            with _extend_in_place(path_segments, ["derived_from"]):
                 instance.properties["derived_from"] = _generate_model_reference(
                     expected_type=(
                         aas_core_meta.v3rc2.Key_types.Asset_administration_shell
@@ -883,7 +884,7 @@ class _Handyman:
 
         # Fix the submodels to be proper model references
         if "submodels" in instance.properties:
-            with _extended_path(path_segments, ["submodels", 0]):
+            with _extend_in_place(path_segments, ["submodels", 0]):
                 instance.properties["submodels"] = ListOfInstances(
                     values=[
                         _generate_model_reference(
@@ -1013,7 +1014,7 @@ class _Handyman:
                 # NOTE (mristin, 2022-06-20):
                 # ID-shorts are mandatory, so we always override them, regardless if
                 # they existed or not.
-                with _extended_path(path_segments, ["submodel_elements", i]):
+                with _extend_in_place(path_segments, ["submodel_elements", i]):
                     submodel_element.properties[
                         "id_short"
                     ] = f"some_id_short_{_hash_path(path_segments)}"
@@ -1068,7 +1069,7 @@ class _Handyman:
 
             for item in value.values:
                 if "id_short" not in item.properties:
-                    with _extended_path(path_segments, ["id_short"]):
+                    with _extend_in_place(path_segments, ["id_short"]):
                         hsh = _hash_path(path_segments=path_segments)
                         item.properties["id_short"] = f"something_random_{hsh}"
 
@@ -1200,7 +1201,7 @@ def _make_minimal_instance_complete(
         if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
             type_anno = intermediate.beneath_optional(prop.type_annotation)
 
-            with _extended_path(path_segments, [prop.name]):
+            with _extend_in_place(path_segments, [prop.name]):
                 instance.properties[prop.name] = _generate_property_value(
                     type_annotation=type_anno,
                     path_segments=path_segments,
@@ -1453,6 +1454,37 @@ class CaseNegativeMinMaxExample(Case):
         self.example_name = example_name
 
 
+class CaseEnumViolation(Case):
+    """Represent a test case with a min/max XSD values set to a negative example."""
+
+    # fmt: on
+    @require(
+        lambda enum, prop: (
+            type_anno := intermediate.beneath_optional(prop.type_annotation),
+            isinstance(type_anno, intermediate.OurTypeAnnotation)
+            and type_anno.symbol == enum,
+        )[1],
+        "Enum corresponds to the property",
+    )
+    @require(
+        lambda cls, prop: id(prop) in cls.property_id_set,
+        "Property belongs to the class",
+    )
+    # fmt: off
+    def __init__(
+            self,
+            environment: Instance,
+            enum: intermediate.Enumeration,
+            cls: intermediate.ConcreteClass,
+            prop: intermediate.Property
+    ) -> None:
+        """Initialize with the given values."""
+        Case.__init__(self, environment=environment, expected=False)
+        self.enum = enum
+        self.cls = cls
+        self.prop = prop
+
+
 CaseUnion = Union[
     CaseMinimal,
     CaseComplete,
@@ -1467,7 +1499,12 @@ CaseUnion = Union[
     CaseNegativeValueExample,
     CasePositiveMinMaxExample,
     CaseNegativeMinMaxExample,
+    CaseEnumViolation,
 ]
+
+aas_core_codegen.common.assert_union_of_descendants_exhaustive(
+    union=CaseUnion, base_class=Case
+)
 
 
 # fmt: off
@@ -1547,7 +1584,7 @@ def _make_instance_violate_max_len_constraint(
 
     assert len_constraint.max_value is not None  # for mypy
 
-    with _extended_path(path_segments, [prop.name]):
+    with _extend_in_place(path_segments, [prop.name]):
         too_long_text = _generate_long_string(
             length=len_constraint.max_value + 1, path_segments=path_segments
         )
@@ -1698,13 +1735,13 @@ def generate(
                     isinstance(type_anno, intermediate.OurTypeAnnotation)
                     and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
                 ):
-                    with _extended_path(path_segments, [prop.name]):
+                    with _extend_in_place(path_segments, [prop.name]):
                         instance.properties[prop.name] = _generate_global_reference(
                             path_segments=path_segments
                         )
 
                 else:
-                    with _extended_path(path_segments, [prop.name]):
+                    with _extend_in_place(path_segments, [prop.name]):
                         instance.properties[prop.name] = "Unexpected string value"
 
                 yield CaseTypeViolation(
@@ -1829,7 +1866,7 @@ def generate(
             ):
                 env, instance = replicator_minimal.replicate()
 
-                with _extended_path(path_segments, [prop.name]):
+                with _extend_in_place(path_segments, [prop.name]):
                     time_of_day = _generate_time_of_day(path_segments=path_segments)
 
                     instance.properties[prop.name] = f"2022-02-29T{time_of_day}Z"
@@ -1933,6 +1970,58 @@ def generate(
                     )
             else:
                 raise AssertionError(f"Unexpected {cls=}")
+
+    # endregion
+
+    # region Generate enum violations
+
+    # fmt: off
+    enums_props_classes: List[
+        Tuple[
+            intermediate.Enumeration,
+            intermediate.Property,
+            intermediate.ConcreteClass
+        ]
+    ] = []
+    # fmt: on
+
+    observed_enums = set()  # type: Set[Identifier]
+
+    for symbol in symbol_table.symbols:
+        if not isinstance(symbol, intermediate.ConcreteClass):
+            continue
+
+        for prop in symbol.properties:
+            type_anno = intermediate.beneath_optional(prop.type_annotation)
+
+            if not (
+                isinstance(type_anno, intermediate.OurTypeAnnotation)
+                and isinstance(type_anno.symbol, intermediate.Enumeration)
+                and type_anno.symbol.name not in observed_enums
+            ):
+                continue
+
+            enums_props_classes.append((type_anno.symbol, prop, symbol))
+
+    for enum, prop, cls in enums_props_classes:
+        minimal_env, path_segments = _generate_minimal_instance_in_minimal_environment(
+            cls=cls,
+            class_graph=class_graph,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+
+        literal_value_set = {literal.value for literal in enum.literals}
+
+        instance = _dereference(environment=minimal_env, path_segments=path_segments)
+        with _extend_in_place(path_segments, [prop.name]):
+            literal_value = "invalid-literal"
+            while literal_value in literal_value_set:
+                literal_value = f"really-{literal_value}"
+
+            instance.properties[prop.name] = literal_value
+
+        yield CaseEnumViolation(environment=minimal_env, enum=enum, cls=cls, prop=prop)
 
     # endregion
 
