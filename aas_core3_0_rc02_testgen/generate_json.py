@@ -10,15 +10,17 @@ from typing import (
     OrderedDict,
     List,
     Any,
+    MutableMapping,
+    Sequence,
 )
 
 import aas_core_codegen.common
 import aas_core_codegen.naming
-from aas_core_codegen import intermediate
+from aas_core_codegen import intermediate, infer_for_schema
 from aas_core_codegen.common import Identifier
 from icontract import ensure, require
 
-from aas_core3_0_rc02_testgen import common, generation
+from aas_core3_0_rc02_testgen import common, generation, ontology
 
 
 @ensure(lambda result: not result.is_absolute())
@@ -258,6 +260,139 @@ class _Serializer:
         return [self._serialize_instance(value) for value in list_of_instances.values]
 
 
+def to_json_path_segments(
+    path_segments: Sequence[Union[int, str]]
+) -> List[Union[int, Identifier]]:
+    """Convert the path segments from the case of the meta-model to JSON casing."""
+    result = []  # type: List[Union[int, Identifier]]
+    for path_segment in path_segments:
+        if isinstance(path_segment, int):
+            result.append(path_segment)
+
+        elif isinstance(path_segment, str):
+            result.append(
+                aas_core_codegen.naming.json_property(Identifier(path_segment))
+            )
+
+        else:
+            aas_core_codegen.common.assert_never(path_segment)
+
+    return result
+
+
+def dereference(
+    start_object: MutableMapping[str, Any],
+    path_segments: Sequence[Union[int, Identifier]],
+) -> Any:
+    """Get the JSON value following the ``path_segments`` from ``start_object``"""
+    cursor = start_object
+    for path_segment in path_segments:
+        if isinstance(path_segment, str):
+            if not isinstance(cursor, collections.abc.MutableMapping):
+                raise ValueError(
+                    f"Could not access the property {path_segment!r} "
+                    f"in a JSON non-object: {cursor}; "
+                    f"{start_object=}, {path_segments=}"
+                )
+
+            cursor = cursor[path_segment]
+        elif isinstance(path_segment, int):
+            if not isinstance(cursor, collections.abc.Sequence):
+                raise ValueError(
+                    f"Could not access the index {path_segment!r} "
+                    f"in a JSON non-array: {cursor}; "
+                    f"{start_object=}, {path_segments=}"
+                )
+
+            cursor = cursor[path_segment]
+        else:
+            aas_core_codegen.common.assert_never(path_segment)
+
+    return cursor
+
+
+def _generate_null_violations(
+    test_data_dir: pathlib.Path,
+    symbol_table: intermediate.SymbolTable,
+    constraints_by_class: MutableMapping[
+        intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
+    ],
+    class_graph: ontology.ClassGraph,
+    handyman: generation.Handyman,
+    serializer: _Serializer,
+) -> None:
+    """Generate the files with the properties and items set to ``null``."""
+    for symbol in symbol_table.symbols:
+        if not isinstance(symbol, intermediate.ConcreteClass):
+            continue
+
+        if symbol.name == Identifier("Event_payload"):
+            # NOTE (mristin, 2022-06-25):
+            # Event payload can not be reached from an environment.
+            continue
+
+        (
+            minimal_env,
+            path_segments,
+        ) = generation.generate_minimal_instance_in_minimal_environment(
+            cls=symbol,
+            class_graph=class_graph,
+            constraints_by_class=constraints_by_class,
+            symbol_table=symbol_table,
+        )
+
+        instance = generation.dereference(
+            environment=minimal_env, path_segments=path_segments
+        )
+
+        handyman.fix_instance(instance=instance, path_segments=path_segments)
+
+        replicator = generation.EnvironmentInstanceReplicator(
+            environment=minimal_env, path_to_instance_from_environment=path_segments
+        )
+
+        for prop in symbol.properties:
+            if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
+                continue
+
+            env, instance = replicator.replicate()
+
+            jsonable_env = serializer.serialize_environment(instance=env)
+
+            jsonable_instance = dereference(
+                start_object=jsonable_env,
+                path_segments=to_json_path_segments(path_segments=path_segments),
+            )
+
+            prop_name_json = aas_core_codegen.naming.json_property(prop.name)
+            jsonable_instance[prop_name_json] = None
+
+            pth = (
+                test_data_dir
+                / "Json/Unexpected/NullViolation"
+                / aas_core_codegen.naming.json_model_type(symbol.name)
+                / f"{prop_name_json}_value.json"
+            )
+
+            pth.parent.mkdir(parents=True, exist_ok=True)
+
+            with pth.open("wt") as fid:
+                json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+
+            type_anno = intermediate.beneath_optional(prop.type_annotation)
+            if isinstance(type_anno, intermediate.ListTypeAnnotation):
+                jsonable_instance[prop_name_json] = [None]
+
+                pth = (
+                    test_data_dir
+                    / "Json/Unexpected/NullViolation"
+                    / aas_core_codegen.naming.json_model_type(symbol.name)
+                    / f"{prop_name_json}_item.json"
+                )
+                with pth.open("wt") as fid:
+                    json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+
+
 def generate(test_data_dir: pathlib.Path) -> None:
     """Generate the JSON files."""
     (
@@ -265,10 +400,14 @@ def generate(test_data_dir: pathlib.Path) -> None:
         constraints_by_class,
     ) = common.load_symbol_table_and_infer_constraints_for_schema()
 
+    class_graph = ontology.compute_class_graph(symbol_table=symbol_table)
+
     serializer = _Serializer(symbol_table=symbol_table)
 
     for test_case in generation.generate(
-        symbol_table=symbol_table, constraints_by_class=constraints_by_class
+        symbol_table=symbol_table,
+        constraints_by_class=constraints_by_class,
+        class_graph=class_graph,
     ):
         relative_pth = _relative_path(test_case=test_case)
         jsonable = serializer.serialize_environment(test_case.environment)
@@ -281,6 +420,19 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
         with pth.open("wt") as fid:
             json.dump(jsonable, fid, indent=2, sort_keys=True)
+
+    handyman = generation.Handyman(
+        symbol_table=symbol_table, constraints_by_class=constraints_by_class
+    )
+
+    _generate_null_violations(
+        test_data_dir=test_data_dir,
+        symbol_table=symbol_table,
+        constraints_by_class=constraints_by_class,
+        class_graph=class_graph,
+        handyman=handyman,
+        serializer=serializer,
+    )
 
 
 def main() -> None:

@@ -106,7 +106,7 @@ def dump(value: ValueUnion) -> str:
 
 
 @require(lambda environment: environment.model_type == "Environment")
-def _dereference(
+def dereference(
     environment: Instance, path_segments: Sequence[Union[int, str]]
 ) -> Instance:
     """Dereference the path to an instance starting from an environment."""
@@ -158,7 +158,7 @@ def _dereference(
         raise AssertionError(
             f"Expected the path {_posix_path(path_segments)} "
             f"in the environment: {json.dumps(environment, indent=2)} "
-            f"to _dereference an instance, but got: {dump(cursor)}"
+            f"to dereference an instance, but got: {dump(cursor)}"
         )
 
     return cursor
@@ -721,7 +721,7 @@ def _generate_minimal_instance(
     )
 
 
-class _Handyman:
+class Handyman:
     """
     Fix the instances recursively in-place so that the constraints are preserved.
 
@@ -741,17 +741,17 @@ class _Handyman:
         self.constraints_by_class = constraints_by_class
 
         self._dispatch_concrete = {
-            "Asset_administration_shell": _Handyman._fix_asset_administration_shell,
-            "Basic_event_element": _Handyman._fix_basic_event_element,
-            "Concept_description": _Handyman._fix_concept_description,
-            "Entity": _Handyman._fix_entity,
-            "Extension": _Handyman._fix_extension,
-            "Property": _Handyman._fix_property,
-            "Qualifier": _Handyman._fix_qualifier,
-            "Range": _Handyman._fix_range,
-            "Submodel": _Handyman._fix_submodel,
-            "Submodel_element_collection": _Handyman._fix_submodel_element_collection,
-            "Submodel_element_list": _Handyman._fix_submodel_element_list,
+            "Asset_administration_shell": Handyman._fix_asset_administration_shell,
+            "Basic_event_element": Handyman._fix_basic_event_element,
+            "Concept_description": Handyman._fix_concept_description,
+            "Entity": Handyman._fix_entity,
+            "Extension": Handyman._fix_extension,
+            "Property": Handyman._fix_property,
+            "Qualifier": Handyman._fix_qualifier,
+            "Range": Handyman._fix_range,
+            "Submodel": Handyman._fix_submodel,
+            "Submodel_element_collection": Handyman._fix_submodel_element_collection,
+            "Submodel_element_list": Handyman._fix_submodel_element_list,
         }
 
         # region Ensure that all the dispatches has been properly defined
@@ -759,7 +759,7 @@ class _Handyman:
             method.__name__ for method in self._dispatch_concrete.values()
         )
 
-        for attr_name in dir(_Handyman):
+        for attr_name in dir(Handyman):
             if attr_name.startswith("_fix_") and attr_name not in inverted_dispatch:
                 raise AssertionError(
                     f"The method {attr_name} is missing in the dispatch set."
@@ -1141,7 +1141,7 @@ class _Handyman:
 
 
 @ensure(lambda result: result[0].model_type == "Environment")
-def _generate_minimal_instance_in_minimal_environment(
+def generate_minimal_instance_in_minimal_environment(
     cls: intermediate.ConcreteClass,
     class_graph: ontology.ClassGraph,
     constraints_by_class: MutableMapping[
@@ -1157,6 +1157,22 @@ def _generate_minimal_instance_in_minimal_environment(
     Return the environment and the path to the instance.
     """
     shortest_path_in_class_graph_from_environment = class_graph.shortest_paths[cls.name]
+
+    if len(shortest_path_in_class_graph_from_environment) == 0:
+        # NOTE (mristin, 2022-06-25):
+        # Cover the edge case where we have to generate the environment itself
+        environment_cls = symbol_table.must_find(Identifier("Environment"))
+        assert isinstance(environment_cls, intermediate.ConcreteClass)
+
+        return (
+            _generate_minimal_instance(
+                cls=environment_cls,
+                path_segments=[],
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            ),
+            [],
+        )
 
     environment_instance: Optional[Instance] = None
 
@@ -1272,8 +1288,8 @@ def _make_minimal_instance_complete(
                 )
 
 
-class _EnvironmentInstanceReplicator:
-    """Make a deep copy of the environment and _dereference the instance in the copy."""
+class EnvironmentInstanceReplicator:
+    """Make a deep copy of the environment and dereference the instance in the copy."""
 
     def __init__(
         self,
@@ -1287,13 +1303,13 @@ class _EnvironmentInstanceReplicator:
         self.path_to_instance_from_environment = list(path_to_instance_from_environment)
 
     def replicate(self) -> Tuple[Instance, Instance]:
-        """Replicate the environment and _dereference the instance in the copy."""
+        """Replicate the environment and dereference the instance in the copy."""
         new_environment = _deep_copy(self.environment)
         assert isinstance(new_environment, Instance)
 
         return (
             new_environment,
-            _dereference(
+            dereference(
                 environment=new_environment,
                 path_segments=self.path_to_instance_from_environment,
             ),
@@ -1701,7 +1717,7 @@ def _generate_additional_cases_for_submodel_element_list(
     constraints_by_class: MutableMapping[
         intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
     ],
-    handyman: _Handyman,
+    handyman: Handyman,
 ) -> Iterator[CaseUnion]:
     # region Dependencies
 
@@ -1734,7 +1750,7 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Prepare replicator
 
-    env, path_segments = _generate_minimal_instance_in_minimal_environment(
+    env, path_segments = generate_minimal_instance_in_minimal_environment(
         cls=cls,
         class_graph=class_graph,
         constraints_by_class=constraints_by_class,
@@ -1742,7 +1758,7 @@ def _generate_additional_cases_for_submodel_element_list(
     )
     handyman.fix_instance(instance=env, path_segments=[])
 
-    instance = _dereference(environment=env, path_segments=path_segments)
+    instance = dereference(environment=env, path_segments=path_segments)
 
     with _extend_in_place(path_segments, ["value", 0]):
         value0 = _generate_minimal_instance(
@@ -1771,7 +1787,7 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value_type_list_element"] = xs_boolean_literal.value
     instance.properties["semantic_id_list_element"] = semantic_id
 
-    replicator = _EnvironmentInstanceReplicator(
+    replicator = EnvironmentInstanceReplicator(
         environment=env, path_to_instance_from_environment=path_segments
     )
 
@@ -1947,19 +1963,10 @@ def generate(
     constraints_by_class: MutableMapping[
         intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
     ],
+    class_graph: ontology.ClassGraph,
 ) -> Iterator[CaseUnion]:
     """Generate the test cases."""
-    relationship_map = ontology.compute_relationship_map(symbol_table=symbol_table)
-
-    class_graph = ontology.ClassGraph(
-        relationship_map=relationship_map,
-        shortest_paths=ontology.compute_shortest_paths_from_environment(
-            symbol_table=symbol_table,
-            relationship_map=relationship_map,
-        ),
-    )
-
-    handyman = _Handyman(
+    handyman = Handyman(
         symbol_table=symbol_table, constraints_by_class=constraints_by_class
     )
 
@@ -2002,7 +2009,7 @@ def generate(
 
         # region Minimal example
 
-        minimal_env, path_segments = _generate_minimal_instance_in_minimal_environment(
+        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
             cls=symbol,
             class_graph=class_graph,
             constraints_by_class=constraints_by_class,
@@ -2013,7 +2020,7 @@ def generate(
 
         yield CaseMinimal(environment=minimal_env, cls=symbol)
 
-        replicator_minimal = _EnvironmentInstanceReplicator(
+        replicator_minimal = EnvironmentInstanceReplicator(
             environment=minimal_env, path_to_instance_from_environment=path_segments
         )
 
@@ -2035,7 +2042,7 @@ def generate(
 
         yield CaseComplete(environment=env, cls=symbol)
 
-        replicator_complete = _EnvironmentInstanceReplicator(
+        replicator_complete = EnvironmentInstanceReplicator(
             environment=env, path_to_instance_from_environment=path_segments
         )
 
@@ -2211,7 +2218,7 @@ def generate(
     for cls in (property_cls, range_cls, extension_cls, qualifier_cls):
         assert isinstance(cls, intermediate.ConcreteClass)
 
-        minimal_env, path_segments = _generate_minimal_instance_in_minimal_environment(
+        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
             cls=cls,
             class_graph=class_graph,
             constraints_by_class=constraints_by_class,
@@ -2220,7 +2227,7 @@ def generate(
 
         handyman.fix_instance(instance=minimal_env, path_segments=[])
 
-        replicator_minimal = _EnvironmentInstanceReplicator(
+        replicator_minimal = EnvironmentInstanceReplicator(
             environment=minimal_env, path_to_instance_from_environment=path_segments
         )
 
@@ -2325,7 +2332,7 @@ def generate(
             enums_props_classes.append((type_anno.symbol, prop, symbol))
 
     for enum, prop, cls in enums_props_classes:
-        minimal_env, path_segments = _generate_minimal_instance_in_minimal_environment(
+        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
             cls=cls,
             class_graph=class_graph,
             constraints_by_class=constraints_by_class,
@@ -2334,7 +2341,7 @@ def generate(
 
         literal_value_set = {literal.value for literal in enum.literals}
 
-        instance = _dereference(environment=minimal_env, path_segments=path_segments)
+        instance = dereference(environment=minimal_env, path_segments=path_segments)
         with _extend_in_place(path_segments, [prop.name]):
             literal_value = "invalid-literal"
             while literal_value in literal_value_set:
