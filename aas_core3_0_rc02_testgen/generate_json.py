@@ -373,8 +373,8 @@ def _generate_null_violations(
             prop_name_json = aas_core_codegen.naming.json_property(prop.name)
 
             if not isinstance(
-                    prop.type_annotation, intermediate.OptionalTypeAnnotation):
-
+                prop.type_annotation, intermediate.OptionalTypeAnnotation
+            ):
                 jsonable_instance[prop_name_json] = None
 
                 pth = (
