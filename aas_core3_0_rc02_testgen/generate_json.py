@@ -352,8 +352,14 @@ def _generate_null_violations(
         )
 
         for prop in symbol.properties:
+            type_anno = intermediate.beneath_optional(prop.type_annotation)
+
             if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
-                continue
+                # NOTE (mristin, 2022-06-25):
+                # We still want to check all the list properties, both optional and
+                # required.
+                if not isinstance(type_anno, intermediate.ListTypeAnnotation):
+                    continue
 
             env, instance = replicator.replicate()
 
@@ -365,21 +371,24 @@ def _generate_null_violations(
             )
 
             prop_name_json = aas_core_codegen.naming.json_property(prop.name)
-            jsonable_instance[prop_name_json] = None
 
-            pth = (
-                test_data_dir
-                / "Json/Unexpected/NullViolation"
-                / aas_core_codegen.naming.json_model_type(symbol.name)
-                / f"{prop_name_json}_value.json"
-            )
+            if not isinstance(
+                    prop.type_annotation, intermediate.OptionalTypeAnnotation):
 
-            pth.parent.mkdir(parents=True, exist_ok=True)
+                jsonable_instance[prop_name_json] = None
 
-            with pth.open("wt") as fid:
-                json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+                pth = (
+                    test_data_dir
+                    / "Json/Unexpected/NullViolation"
+                    / aas_core_codegen.naming.json_model_type(symbol.name)
+                    / f"{prop_name_json}_value.json"
+                )
 
-            type_anno = intermediate.beneath_optional(prop.type_annotation)
+                pth.parent.mkdir(parents=True, exist_ok=True)
+
+                with pth.open("wt") as fid:
+                    json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+
             if isinstance(type_anno, intermediate.ListTypeAnnotation):
                 jsonable_instance[prop_name_json] = [None]
 
@@ -389,6 +398,9 @@ def _generate_null_violations(
                     / aas_core_codegen.naming.json_model_type(symbol.name)
                     / f"{prop_name_json}_item.json"
                 )
+
+                pth.parent.mkdir(parents=True, exist_ok=True)
+
                 with pth.open("wt") as fid:
                     json.dump(jsonable_env, fid, indent=2, sort_keys=True)
 
