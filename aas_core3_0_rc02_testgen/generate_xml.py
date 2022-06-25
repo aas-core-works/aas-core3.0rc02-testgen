@@ -16,7 +16,7 @@ from aas_core_codegen import intermediate
 from aas_core_codegen.common import Identifier
 from icontract import ensure, require
 
-from aas_core3_0_rc02_testgen import common, generation
+from aas_core3_0_rc02_testgen import common, generation, ontology
 
 
 @ensure(lambda result: not result.is_absolute())
@@ -384,10 +384,14 @@ def generate(test_data_dir: pathlib.Path) -> None:
         constraints_by_class,
     ) = common.load_symbol_table_and_infer_constraints_for_schema()
 
+    class_graph = ontology.compute_class_graph(symbol_table=symbol_table)
+
     serializer = _Serializer(symbol_table=symbol_table)
 
     for test_case in generation.generate(
-        symbol_table=symbol_table, constraints_by_class=constraints_by_class
+        symbol_table=symbol_table,
+        constraints_by_class=constraints_by_class,
+        class_graph=class_graph,
     ):
         relative_pth = _relative_path(test_case=test_case)
 

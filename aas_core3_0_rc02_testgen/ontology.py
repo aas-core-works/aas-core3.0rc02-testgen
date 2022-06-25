@@ -71,7 +71,9 @@ class ClassGraph:
         self.shortest_paths = shortest_paths
 
 
-def compute_relationship_map(symbol_table: intermediate.SymbolTable) -> RelationshipMap:
+def _compute_relationship_map(
+    symbol_table: intermediate.SymbolTable,
+) -> RelationshipMap:
     """Compute the relationships between the classes as edges in the class graph."""
     rel_map: OrderedDict[
         Tuple[Identifier, Identifier], RelationshipUnion
@@ -152,7 +154,7 @@ def compute_relationship_map(symbol_table: intermediate.SymbolTable) -> Relation
     return rel_map
 
 
-def compute_shortest_paths_from_environment(
+def _compute_shortest_paths_from_environment(
     symbol_table: intermediate.SymbolTable, relationship_map: RelationshipMap
 ) -> ShortestPathMap:
     """Compute the shortest path from the environment to the concrete classes."""
@@ -175,6 +177,8 @@ def compute_shortest_paths_from_environment(
     _, raw_path_map = networkx.single_source_dijkstra(G=graph, source="Environment")
 
     path_map: OrderedDict[Identifier, Sequence[Segment]] = collections.OrderedDict()
+
+    path_map[Identifier("Environment")] = []
 
     for symbol in symbol_table.symbols:
         if symbol.name == "Environment":
@@ -224,3 +228,16 @@ def compute_shortest_paths_from_environment(
         path_map[symbol.name] = path
 
     return path_map
+
+
+def compute_class_graph(symbol_table: intermediate.SymbolTable) -> ClassGraph:
+    """Compute the relationship between the classes."""
+    relationship_map = _compute_relationship_map(symbol_table=symbol_table)
+
+    return ClassGraph(
+        relationship_map=relationship_map,
+        shortest_paths=_compute_shortest_paths_from_environment(
+            symbol_table=symbol_table,
+            relationship_map=relationship_map,
+        ),
+    )
