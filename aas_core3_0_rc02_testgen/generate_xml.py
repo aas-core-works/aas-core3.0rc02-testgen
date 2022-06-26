@@ -14,17 +14,29 @@ import aas_core_codegen.common
 import aas_core_codegen.naming
 from aas_core_codegen import intermediate
 from aas_core_codegen.common import Identifier
-from icontract import ensure, require
+from icontract import ensure
 
 from aas_core3_0_rc02_testgen import common, generation, ontology
 
 
 @ensure(lambda result: not result.is_absolute())
-def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
+def _relative_path(
+    environment_cls: intermediate.ConcreteClass, test_case: generation.CaseUnion
+) -> pathlib.Path:
     """Generate the relative path based on the test case."""
     assert test_case.__class__.__name__.startswith("Case")
 
     base_pth = pathlib.Path("Xml")
+
+    if test_case.container_class is test_case.cls:
+        base_pth /= "SelfContained"
+    elif test_case.container_class is environment_cls:
+        base_pth /= "ContainedInEnvironment"
+    else:
+        raise NotImplementedError(
+            f"We do not know how to determine the target for "
+            f"the container class {test_case.container_class}"
+        )
 
     if isinstance(test_case, generation.CaseMinimal):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
@@ -54,7 +66,7 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
             / f"{test_case.example_name}.xml"
         )
 
-    elif isinstance(test_case, generation.CaseNegativePatternExample):
+    elif isinstance(test_case, generation.CasePatternViolation):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
@@ -127,7 +139,7 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
             / f"{test_case.example_name}.xml"
         )
 
-    elif isinstance(test_case, generation.CaseNegativeValueExample):
+    elif isinstance(test_case, generation.CaseInvalidValueExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
@@ -151,7 +163,7 @@ def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
             / f"{test_case.example_name}.xml"
         )
 
-    elif isinstance(test_case, generation.CaseNegativeMinMaxExample):
+    elif isinstance(test_case, generation.CaseInvalidMinMaxExample):
         cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
 
         return (
@@ -202,14 +214,17 @@ class _Serializer:
         """Initialize with the given values."""
         self.symbol_table = symbol_table
 
-    @require(lambda instance: instance.model_type == "Environment")
-    def serialize_environment(self, instance: generation.Instance) -> minidom.Element:
+    def serialize_to_root_element(
+        self,
+        instance: generation.Instance,
+        element_name: str,
+    ) -> minidom.Element:
         """Serialize the ``environment`` to a JSON-able object."""
         impl = minidom.getDOMImplementation()
         assert impl is not None
         doc = impl.createDocument(
             namespaceURI="http://www.admin-shell.io/aas/3/0/RC02",
-            qualifiedName="environment",
+            qualifiedName=element_name,
             doctype=None,
         )
 
@@ -361,6 +376,7 @@ def _conforms_to_xml_1_0(value: generation.ValueUnion) -> bool:
         else:
             return True
     elif isinstance(value, generation.Instance):
+        # noinspection PyTypeChecker
         for prop_value in value.properties.values():
             if not _conforms_to_xml_1_0(prop_value):
                 return False
@@ -388,18 +404,24 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
     serializer = _Serializer(symbol_table=symbol_table)
 
+    environment_cls = symbol_table.must_find(Identifier("Environment"))
+    assert isinstance(environment_cls, intermediate.ConcreteClass)
+
     for test_case in generation.generate(
         symbol_table=symbol_table,
         constraints_by_class=constraints_by_class,
         class_graph=class_graph,
     ):
-        relative_pth = _relative_path(test_case=test_case)
+        relative_pth = _relative_path(
+            environment_cls=environment_cls, test_case=test_case
+        )
 
         pth = test_data_dir / relative_pth
 
-        if not _conforms_to_xml_1_0(test_case.environment):
+        if not _conforms_to_xml_1_0(test_case.container):
             print(
-                f"The test case can not be represented in XML 1.0, skipping: {relative_pth}"
+                f"The test case can not be represented in XML 1.0, "
+                f"skipping: {relative_pth}"
             )
             continue
 
@@ -407,7 +429,13 @@ def generate(test_data_dir: pathlib.Path) -> None:
         if not parent.exists():
             parent.mkdir(parents=True)
 
-        element = serializer.serialize_environment(test_case.environment)
+        element_name = aas_core_codegen.naming.xml_class_name(
+            test_case.container_class.name
+        )
+
+        element = serializer.serialize_to_root_element(
+            instance=test_case.container, element_name=element_name
+        )
 
         pth.write_text(element.toprettyxml(), encoding="utf-8")
 
