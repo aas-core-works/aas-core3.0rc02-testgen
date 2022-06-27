@@ -84,7 +84,6 @@ def _relative_path(
         return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CaseMinLengthViolation):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
         return base_pth / f"{prop_name}.json"
@@ -108,8 +107,6 @@ def _relative_path(
         )
 
     elif isinstance(test_case, generation.CaseInvalidValueExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
         return (
             base_pth
             / test_case.data_type_def_literal.name
@@ -125,8 +122,6 @@ def _relative_path(
         )
 
     elif isinstance(test_case, generation.CaseInvalidMinMaxExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
         return (
             base_pth
             / test_case.data_type_def_literal.name
