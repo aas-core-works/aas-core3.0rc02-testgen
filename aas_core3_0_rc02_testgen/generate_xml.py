@@ -26,6 +26,8 @@ def _relative_path(
     """Generate the relative path based on the test case."""
     assert test_case.__class__.__name__.startswith("Case")
 
+    cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
+
     base_pth = pathlib.Path("Xml")
 
     if test_case.container_class is test_case.cls:
@@ -38,170 +40,101 @@ def _relative_path(
             f"the container class {test_case.container_class}"
         )
 
-    if isinstance(test_case, generation.CaseMinimal):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
+    if test_case.expected:
+        base_pth = base_pth / "Expected" / cls_name
 
-        return base_pth / "Expected" / cls_name / "minimal.xml"
+    else:
+        assert test_case.__class__.__name__.startswith("Case")
+        cause = test_case.__class__.__name__[len("Case"):]
+
+        base_pth = base_pth / "Unexpected" / cause / cls_name
+
+    if isinstance(test_case, generation.CaseMinimal):
+        return base_pth / "minimal.xml"
 
     elif isinstance(test_case, generation.CaseComplete):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
-        return base_pth / "Expected" / cls_name / "complete.xml"
+        return base_pth / "complete.xml"
 
     elif isinstance(test_case, generation.CaseTypeViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return base_pth / "Unexpected" / "TypeViolation" / cls_name / f"{prop_name}.xml"
+        return base_pth / f"{prop_name}.xml"
 
     elif isinstance(test_case, generation.CasePositivePatternExample):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / f"{prop_name}OverPatternExamples"
             / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CasePatternViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "PatternViolation"
-            / cls_name
-            / prop_name
-            / f"{test_case.example_name}.xml"
-        )
+        return base_pth / prop_name / f"{test_case.example_name}.xml"
 
     elif isinstance(test_case, generation.CaseRequiredViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "RequiredViolation"
-            / cls_name
-            / f"{prop_name}.xml"
-        )
+        return base_pth / f"{prop_name}.xml"
 
     elif isinstance(test_case, generation.CaseMinLengthViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "MinLengthViolation"
-            / cls_name
-            / f"{prop_name}.xml"
-        )
+        return base_pth / f"{prop_name}.xml"
 
     elif isinstance(test_case, generation.CaseMaxLengthViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "MaxLengthViolation"
-            / cls_name
-            / f"{prop_name}.xml"
-        )
+        return base_pth / f"{prop_name}.xml"
 
     elif isinstance(test_case, generation.CaseDateTimeStampUtcViolationOnFebruary29th):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "DateTimeStampUtcViolationOnFebruary29th"
-            / cls_name
-            / f"{prop_name}.xml"
-        )
+        return base_pth / f"{prop_name}.xml"
 
     elif isinstance(test_case, generation.CasePositiveValueExample):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / "OverValueExamples"
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseInvalidValueExample):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
         return (
             base_pth
-            / "Unexpected"
-            / "InvalidValueExamples"
-            / cls_name
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CasePositiveMinMaxExample):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / "OverMinMaxExamples"
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseInvalidMinMaxExample):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
         return (
             base_pth
-            / "Unexpected"
-            / "InvalidMinMaxExamples"
-            / cls_name
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.xml"
         )
 
     elif isinstance(test_case, generation.CaseEnumViolation):
         enum_name = aas_core_codegen.naming.xml_class_name(test_case.enum.name)
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
         prop_name = aas_core_codegen.naming.xml_property(test_case.prop.name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "EnumViolation"
-            / enum_name
-            / f"{cls_name}-{prop_name}.xml"
-        )
+        return base_pth / f"{prop_name}_as_{enum_name}.xml"
 
     elif isinstance(test_case, generation.CasePositiveManual):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-        return base_pth / "Expected" / cls_name / f"{test_case.name}.xml"
+        return base_pth / f"{test_case.name}.xml"
 
     elif isinstance(test_case, generation.CaseConstraintViolation):
-        cls_name = aas_core_codegen.naming.xml_class_name(test_case.cls.name)
-
-        return (
-            base_pth
-            / "Unexpected"
-            / "ConstraintViolation"
-            / cls_name
-            / f"{test_case.name}.xml"
-        )
+        return base_pth / f"{test_case.name}.xml"
 
     else:
         aas_core_codegen.common.assert_never(test_case)
