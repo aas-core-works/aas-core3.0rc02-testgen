@@ -18,185 +18,132 @@ import aas_core_codegen.common
 import aas_core_codegen.naming
 from aas_core_codegen import intermediate, infer_for_schema
 from aas_core_codegen.common import Identifier
-from icontract import ensure, require
+from icontract import ensure
 
 from aas_core3_0_rc02_testgen import common, generation, ontology
 
 
 @ensure(lambda result: not result.is_absolute())
-def _relative_path(test_case: generation.CaseUnion) -> pathlib.Path:
+def _relative_path(
+    environment_cls: intermediate.ConcreteClass, test_case: generation.CaseUnion
+) -> pathlib.Path:
     """Generate the relative path based on the test case."""
     assert test_case.__class__.__name__.startswith("Case")
 
+    cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
+
     base_pth = pathlib.Path("Json")
 
-    if isinstance(test_case, generation.CaseMinimal):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
-        return base_pth / "Expected" / cls_name / "minimal.json"
-
-    elif isinstance(test_case, generation.CaseComplete):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
-        return base_pth / "Expected" / cls_name / "complete.json"
-
-    elif isinstance(test_case, generation.CaseTypeViolation):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-        prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
-
-        return (
-            base_pth / "Unexpected" / "TypeViolation" / cls_name / f"{prop_name}.json"
+    if test_case.container_class is test_case.cls:
+        base_pth /= "SelfContained"
+    elif test_case.container_class is environment_cls:
+        base_pth /= "ContainedInEnvironment"
+    else:
+        raise NotImplementedError(
+            f"We do not know how to determine the target for "
+            f"the container class {test_case.container_class}"
         )
 
+    if test_case.expected:
+        base_pth = base_pth / "Expected" / cls_name
+
+    else:
+        assert test_case.__class__.__name__.startswith("Case")
+        cause = test_case.__class__.__name__[len("Case") :]
+
+        base_pth = base_pth / "Unexpected" / cause / cls_name
+
+    if isinstance(test_case, generation.CaseMinimal):
+        return base_pth / "minimal.json"
+
+    elif isinstance(test_case, generation.CaseComplete):
+        return base_pth / "complete.json"
+
+    elif isinstance(test_case, generation.CaseTypeViolation):
+        prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
+
+        return base_pth / f"{prop_name}.json"
+
     elif isinstance(test_case, generation.CasePositivePatternExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / f"{prop_name}OverPatternExamples"
             / f"{test_case.example_name}.json"
         )
 
-    elif isinstance(test_case, generation.CaseNegativePatternExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
+    elif isinstance(test_case, generation.CasePatternViolation):
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "PatternViolation"
-            / cls_name
-            / prop_name
-            / f"{test_case.example_name}.json"
-        )
+        return base_pth / prop_name / f"{test_case.example_name}.json"
 
     elif isinstance(test_case, generation.CaseRequiredViolation):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "RequiredViolation"
-            / cls_name
-            / f"{prop_name}.json"
-        )
+        return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CaseMinLengthViolation):
         cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "MinLengthViolation"
-            / cls_name
-            / f"{prop_name}.json"
-        )
+        return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CaseMaxLengthViolation):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "MaxLengthViolation"
-            / cls_name
-            / f"{prop_name}.json"
-        )
+        return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CaseDateTimeStampUtcViolationOnFebruary29th):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "DateTimeStampUtcViolationOnFebruary29th"
-            / cls_name
-            / f"{prop_name}.json"
-        )
+        return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CasePositiveValueExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / "OverValueExamples"
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.json"
         )
 
-    elif isinstance(test_case, generation.CaseNegativeValueExample):
+    elif isinstance(test_case, generation.CaseInvalidValueExample):
         cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
 
         return (
             base_pth
-            / "Unexpected"
-            / "InvalidValueExamples"
-            / cls_name
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.json"
         )
 
     elif isinstance(test_case, generation.CasePositiveMinMaxExample):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
         return (
             base_pth
-            / "Expected"
-            / cls_name
             / "OverMinMaxExamples"
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.json"
         )
 
-    elif isinstance(test_case, generation.CaseNegativeMinMaxExample):
+    elif isinstance(test_case, generation.CaseInvalidMinMaxExample):
         cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
 
         return (
             base_pth
-            / "Unexpected"
-            / "InvalidMinMaxExamples"
-            / cls_name
             / test_case.data_type_def_literal.name
             / f"{test_case.example_name}.json"
         )
 
     elif isinstance(test_case, generation.CaseEnumViolation):
         enum_name = aas_core_codegen.naming.json_model_type(test_case.enum.name)
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.prop.name)
 
-        return (
-            base_pth
-            / "Unexpected"
-            / "EnumViolation"
-            / enum_name
-            / f"{cls_name}-{prop_name}.json"
-        )
+        return base_pth / f"{prop_name}_as_{enum_name}.json"
 
     elif isinstance(test_case, generation.CasePositiveManual):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
-        return base_pth / "Expected" / cls_name / f"{test_case.name}.json"
+        return base_pth / f"{test_case.name}.json"
 
     elif isinstance(test_case, generation.CaseConstraintViolation):
-        cls_name = aas_core_codegen.naming.json_model_type(test_case.cls.name)
-
-        return (
-            base_pth
-            / "Unexpected"
-            / "ConstraintViolation"
-            / cls_name
-            / f"{test_case.name}.json"
-        )
+        return base_pth / f"{test_case.name}.json"
 
     else:
         aas_core_codegen.common.assert_never(test_case)
@@ -209,23 +156,17 @@ class _Serializer:
         """Initialize with the given values."""
         self.symbol_table = symbol_table
 
-    @require(lambda instance: instance.model_type == "Environment")
-    def serialize_environment(
-        self, instance: generation.Instance
-    ) -> OrderedDict[str, Any]:
-        """Serialize the ``environment`` to a JSON-able object."""
-        return self._serialize_instance(instance=instance)
-
     def _serialize_value(self, value: generation.ValueUnion) -> Any:
         if isinstance(value, generation.PrimitiveValueTuple):
             return self._serialize_primitive(value)
         elif isinstance(value, generation.Instance):
-            return self._serialize_instance(value)
+            return self.serialize_instance(value)
         elif isinstance(value, generation.ListOfInstances):
             return self._serialize_list_of_instances(value)
         else:
             aas_core_codegen.common.assert_never(value)
 
+    # noinspection PyMethodMayBeStatic
     def _serialize_primitive(
         self, value: generation.PrimitiveValueUnion
     ) -> Union[bool, int, float, str]:
@@ -234,9 +175,10 @@ class _Serializer:
         else:
             return value
 
-    def _serialize_instance(
+    def serialize_instance(
         self, instance: generation.Instance
     ) -> OrderedDict[str, Any]:
+        """Convert the ``instance`` to a JSON-able data structure."""
         jsonable = collections.OrderedDict()  # type: OrderedDict[str, Any]
 
         for prop_name, prop_value in instance.properties.items():
@@ -257,7 +199,7 @@ class _Serializer:
     def _serialize_list_of_instances(
         self, list_of_instances: generation.ListOfInstances
     ) -> List[OrderedDict[str, Any]]:
-        return [self._serialize_instance(value) for value in list_of_instances.values]
+        return [self.serialize_instance(value) for value in list_of_instances.values]
 
 
 def to_json_path_segments(
@@ -322,33 +264,43 @@ def _generate_null_violations(
     serializer: _Serializer,
 ) -> None:
     """Generate the files with the properties and items set to ``null``."""
+    environment_cls = symbol_table.must_find(Identifier("Environment"))
+    assert isinstance(environment_cls, intermediate.ConcreteClass)
+
     for symbol in symbol_table.symbols:
         if not isinstance(symbol, intermediate.ConcreteClass):
             continue
 
-        if symbol.name == Identifier("Event_payload"):
-            # NOTE (mristin, 2022-06-25):
-            # Event payload can not be reached from an environment.
-            continue
+        if symbol.name not in class_graph.shortest_paths:
+            path_segments = []  # type: List[Union[str, int]]
 
-        (
-            minimal_env,
-            path_segments,
-        ) = generation.generate_minimal_instance_in_minimal_environment(
-            cls=symbol,
-            class_graph=class_graph,
-            constraints_by_class=constraints_by_class,
-            symbol_table=symbol_table,
-        )
+            container = generation.generate_minimal_instance(
+                cls=symbol,
+                path_segments=path_segments,
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
 
-        instance = generation.dereference(
-            environment=minimal_env, path_segments=path_segments
-        )
+            container_class = symbol
+        else:
+            (
+                container,
+                path_segments,
+            ) = generation.generate_minimal_instance_in_minimal_environment(
+                cls=symbol,
+                class_graph=class_graph,
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
 
-        handyman.fix_instance(instance=instance, path_segments=path_segments)
+            container_class = environment_cls
 
-        replicator = generation.EnvironmentInstanceReplicator(
-            environment=minimal_env, path_to_instance_from_environment=path_segments
+        handyman.fix_instance(instance=container, path_segments=[])
+
+        replicator = generation.ContainerInstanceReplicator(
+            container_class=container_class,
+            container=container,
+            path_to_instance=path_segments,
         )
 
         for prop in symbol.properties:
@@ -361,16 +313,22 @@ def _generate_null_violations(
                 if not isinstance(type_anno, intermediate.ListTypeAnnotation):
                     continue
 
-            env, instance = replicator.replicate()
+            container, _, path_segments = replicator.replicate()
 
-            jsonable_env = serializer.serialize_environment(instance=env)
+            jsonable_container = serializer.serialize_instance(instance=container)
 
             jsonable_instance = dereference(
-                start_object=jsonable_env,
+                start_object=jsonable_container,
                 path_segments=to_json_path_segments(path_segments=path_segments),
             )
 
             prop_name_json = aas_core_codegen.naming.json_property(prop.name)
+
+            base_pth = test_data_dir / "Json"
+            if container_class is environment_cls and symbol is not environment_cls:
+                base_pth /= "ContainedInEnvironment"
+            else:
+                base_pth /= "SelfContained"
 
             if not isinstance(
                 prop.type_annotation, intermediate.OptionalTypeAnnotation
@@ -378,8 +336,9 @@ def _generate_null_violations(
                 jsonable_instance[prop_name_json] = None
 
                 pth = (
-                    test_data_dir
-                    / "Json/Unexpected/NullViolation"
+                    base_pth
+                    / "Unexpected"
+                    / "NullViolation"
                     / aas_core_codegen.naming.json_model_type(symbol.name)
                     / f"{prop_name_json}_value.json"
                 )
@@ -387,14 +346,15 @@ def _generate_null_violations(
                 pth.parent.mkdir(parents=True, exist_ok=True)
 
                 with pth.open("wt") as fid:
-                    json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+                    json.dump(jsonable_container, fid, indent=2, sort_keys=True)
 
             if isinstance(type_anno, intermediate.ListTypeAnnotation):
                 jsonable_instance[prop_name_json] = [None]
 
                 pth = (
-                    test_data_dir
-                    / "Json/Unexpected/NullViolation"
+                    base_pth
+                    / "Unexpected"
+                    / "NullViolation"
                     / aas_core_codegen.naming.json_model_type(symbol.name)
                     / f"{prop_name_json}_item.json"
                 )
@@ -402,7 +362,7 @@ def _generate_null_violations(
                 pth.parent.mkdir(parents=True, exist_ok=True)
 
                 with pth.open("wt") as fid:
-                    json.dump(jsonable_env, fid, indent=2, sort_keys=True)
+                    json.dump(jsonable_container, fid, indent=2, sort_keys=True)
 
 
 def generate(test_data_dir: pathlib.Path) -> None:
@@ -416,13 +376,18 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
     serializer = _Serializer(symbol_table=symbol_table)
 
+    environment_cls = symbol_table.must_find(Identifier("Environment"))
+    assert isinstance(environment_cls, intermediate.ConcreteClass)
+
     for test_case in generation.generate(
         symbol_table=symbol_table,
         constraints_by_class=constraints_by_class,
         class_graph=class_graph,
     ):
-        relative_pth = _relative_path(test_case=test_case)
-        jsonable = serializer.serialize_environment(test_case.environment)
+        relative_pth = _relative_path(
+            environment_cls=environment_cls, test_case=test_case
+        )
+        jsonable = serializer.serialize_instance(instance=test_case.container)
 
         pth = test_data_dir / relative_pth
 

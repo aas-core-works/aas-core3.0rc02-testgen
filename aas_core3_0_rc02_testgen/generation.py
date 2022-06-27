@@ -19,6 +19,7 @@ from typing import (
     Iterable,
     Iterator,
     Set,
+    Mapping,
 )
 
 import aas_core_codegen.common
@@ -105,18 +106,17 @@ def dump(value: ValueUnion) -> str:
     return json.dumps(_to_jsonable(value), indent=2)
 
 
-@require(lambda environment: environment.model_type == "Environment")
 def dereference(
-    environment: Instance, path_segments: Sequence[Union[int, str]]
+    container: Instance, path_segments: Sequence[Union[int, str]]
 ) -> Instance:
-    """Dereference the path to an instance starting from an environment."""
-    cursor = environment  # type: Any
+    """Dereference the path to an instance starting from a container instance."""
+    cursor = container  # type: Any
     for i, segment in enumerate(path_segments):
         if isinstance(segment, str):
             if not isinstance(cursor, Instance):
                 raise AssertionError(
                     f"Expected the path {_posix_path(path_segments)} "
-                    f"in the environment: {dump(environment)}; "
+                    f"in the container instance: {dump(container)}; "
                     f"however, the cursor at the segment {i} "
                     f"does not point to an instance, but to: {dump(cursor)}"
                 )
@@ -124,7 +124,7 @@ def dereference(
             if segment not in cursor.properties:
                 raise AssertionError(
                     f"Expected the path {_posix_path(path_segments)} "
-                    f"in the environment: {dump(environment)}; "
+                    f"in the container instance: {dump(container)}; "
                     f"however, the segment {i + 1},{segment}, "
                     f"does not exist as a property "
                     f"in the instance: {dump(cursor)}"
@@ -136,7 +136,7 @@ def dereference(
             if not isinstance(cursor, ListOfInstances):
                 raise AssertionError(
                     f"Expected the path {_posix_path(path_segments)} "
-                    f"in the environment: {dump(environment)}; "
+                    f"in the container instance: {dump(container)}; "
                     f"however, the cursor at the segment {i} "
                     f"does not point to a list of instances, but to: {dump(cursor)}"
                 )
@@ -144,7 +144,7 @@ def dereference(
             if segment >= len(cursor.values):
                 raise AssertionError(
                     f"Expected the path {_posix_path(path_segments)} "
-                    f"in the environment: {dump(environment)}; "
+                    f"in the container instance: {dump(container)}; "
                     f"however, the segment {i + 1}, {segment}, "
                     f"does not exist as an item "
                     f"in the list of instances: {dump(cursor)}"
@@ -157,7 +157,7 @@ def dereference(
     if not isinstance(cursor, Instance):
         raise AssertionError(
             f"Expected the path {_posix_path(path_segments)} "
-            f"in the environment: {json.dumps(environment, indent=2)} "
+            f"in the container instance: {json.dumps(container, indent=2)} "
             f"to dereference an instance, but got: {dump(cursor)}"
         )
 
@@ -652,7 +652,7 @@ def _generate_concrete_minimal_instance(
         a_cls: intermediate.ClassUnion, a_path_segments: List[Union[str, int]]
     ) -> Instance:
         """Generate an instance passing over the parameters from the closure."""
-        return _generate_minimal_instance(
+        return generate_minimal_instance(
             cls=a_cls,
             path_segments=a_path_segments,
             constraints_by_class=constraints_by_class,
@@ -681,7 +681,7 @@ def _generate_concrete_minimal_instance(
     # endregion
 
 
-def _generate_minimal_instance(
+def generate_minimal_instance(
     cls: intermediate.ClassUnion,
     path_segments: List[Union[str, int]],
     constraints_by_class: MutableMapping[
@@ -745,6 +745,7 @@ class Handyman:
             "Basic_event_element": Handyman._fix_basic_event_element,
             "Concept_description": Handyman._fix_concept_description,
             "Entity": Handyman._fix_entity,
+            "Event_payload": Handyman._fix_event_payload,
             "Extension": Handyman._fix_extension,
             "Property": Handyman._fix_property,
             "Qualifier": Handyman._fix_qualifier,
@@ -931,6 +932,27 @@ class Handyman:
 
         self._recurse_into_properties(instance=instance, path_segments=path_segments)
 
+    def _fix_event_payload(
+        self, instance: Instance, path_segments: List[Union[str, int]]
+    ) -> None:
+        # Fix that the source is a proper model reference
+        if "source" in instance.properties:
+            with _extend_in_place(path_segments, ["source"]):
+                instance.properties["source"] = _generate_model_reference(
+                    expected_type=aas_core_meta.v3rc2.Key_types.Referable,
+                    path_segments=path_segments,
+                )
+
+        # Fix that the observable reference is a proper model reference
+        if "observable_reference" in instance.properties:
+            with _extend_in_place(path_segments, ["observable_reference"]):
+                instance.properties["observable_reference"] = _generate_model_reference(
+                    expected_type=aas_core_meta.v3rc2.Key_types.Referable,
+                    path_segments=path_segments,
+                )
+
+        self._recurse_into_properties(instance=instance, path_segments=path_segments)
+
     def _fix_extension(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
@@ -1111,7 +1133,7 @@ class Handyman:
             semantic_id = _generate_global_reference(path_segments)
 
             with _extend_in_place(path_segments, ["value", 0]):
-                value0 = _generate_minimal_instance(
+                value0 = generate_minimal_instance(
                     cls=property_cls,
                     path_segments=path_segments,
                     constraints_by_class=self.constraints_by_class,
@@ -1121,7 +1143,7 @@ class Handyman:
                 value0.properties["semantic_id"] = semantic_id
 
             with _extend_in_place(path_segments, ["value", 1]):
-                value1 = _generate_minimal_instance(
+                value1 = generate_minimal_instance(
                     cls=property_cls,
                     path_segments=path_segments,
                     constraints_by_class=self.constraints_by_class,
@@ -1165,7 +1187,7 @@ def generate_minimal_instance_in_minimal_environment(
         assert isinstance(environment_cls, intermediate.ConcreteClass)
 
         return (
-            _generate_minimal_instance(
+            generate_minimal_instance(
                 cls=environment_cls,
                 path_segments=[],
                 constraints_by_class=constraints_by_class,
@@ -1187,7 +1209,7 @@ def generate_minimal_instance_in_minimal_environment(
                 "Expected the generation to start from an instance "
                 "of the class 'Environment'"
             )
-            source_instance = _generate_minimal_instance(
+            source_instance = generate_minimal_instance(
                 cls=edge.source,
                 path_segments=[],
                 constraints_by_class=constraints_by_class,
@@ -1202,7 +1224,7 @@ def generate_minimal_instance_in_minimal_environment(
 
             path_segments.append(prop_name)
 
-            target_instance = _generate_minimal_instance(
+            target_instance = generate_minimal_instance(
                 cls=edge.target,
                 path_segments=path_segments,
                 constraints_by_class=constraints_by_class,
@@ -1216,7 +1238,7 @@ def generate_minimal_instance_in_minimal_environment(
             path_segments.append(prop_name)
             path_segments.append(0)
 
-            target_instance = _generate_minimal_instance(
+            target_instance = generate_minimal_instance(
                 cls=edge.target,
                 path_segments=path_segments,
                 constraints_by_class=constraints_by_class,
@@ -1247,7 +1269,7 @@ def generate_minimal_instance_in_minimal_environment(
     return environment_instance, instance_path
 
 
-def _make_minimal_instance_complete(
+def make_minimal_instance_complete(
     instance: Instance,
     path_segments: List[Union[int, str]],
     cls: intermediate.ConcreteClass,
@@ -1278,7 +1300,7 @@ def _make_minimal_instance_complete(
                         prop, None
                     ),
                     generate_instance=(
-                        lambda a_cls, a_path_segments: _generate_minimal_instance(
+                        lambda a_cls, a_path_segments: generate_minimal_instance(
                             cls=a_cls,
                             path_segments=a_path_segments,
                             constraints_by_class=constraints_by_class,
@@ -1288,59 +1310,102 @@ def _make_minimal_instance_complete(
                 )
 
 
-class EnvironmentInstanceReplicator:
-    """Make a deep copy of the environment and dereference the instance in the copy."""
+class ContainerInstanceReplicator:
+    """Make a deep copy of the container and dereference the instance in the copy."""
 
     def __init__(
         self,
-        environment: Instance,
-        path_to_instance_from_environment: Sequence[Union[str, int]],
+        container: Instance,
+        container_class: intermediate.ConcreteClass,
+        path_to_instance: Sequence[Union[str, int]],
     ) -> None:
         """Initialize with the given values."""
         # NOTE (mristin, 2022-06-20):
         # Make a copy so that modifications do not mess it up
-        self.environment = _deep_copy(environment)
-        self.path_to_instance_from_environment = list(path_to_instance_from_environment)
+        self.container = _deep_copy(container)
+        self.container_class = container_class
+        self.path_to_instance = list(path_to_instance)
 
-    def replicate(self) -> Tuple[Instance, Instance]:
+    def replicate(self) -> Tuple[Instance, Instance, List[Union[str, int]]]:
         """Replicate the environment and dereference the instance in the copy."""
-        new_environment = _deep_copy(self.environment)
-        assert isinstance(new_environment, Instance)
+        new_container = _deep_copy(self.container)
+        assert isinstance(new_container, Instance)
 
         return (
-            new_environment,
+            new_container,
             dereference(
-                environment=new_environment,
-                path_segments=self.path_to_instance_from_environment,
+                container=new_container,
+                path_segments=self.path_to_instance,
             ),
+            list(self.path_to_instance),
         )
+
+
+class _Replication:
+    """Structure the information necessary to replicate a starting point of a case."""
+
+    def __init__(
+        self,
+        minimal: ContainerInstanceReplicator,
+        complete: ContainerInstanceReplicator,
+    ) -> None:
+        self.minimal = minimal
+        self.complete = complete
 
 
 class Case(DBC):
     """Represent an abstract test case."""
 
-    def __init__(self, environment: Instance, expected: bool) -> None:
+    def __init__(
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        expected: bool,
+        cls: intermediate.ConcreteClass,
+    ) -> None:
         """Initialize with the given values."""
-        self.environment = environment
+        self.container_class = container_class
+        self.container = container
         self.expected = expected
+        self.cls = cls
 
 
 class CaseMinimal(Case):
     """Represent a minimal test case."""
 
-    def __init__(self, environment: Instance, cls: intermediate.ConcreteClass) -> None:
+    def __init__(
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+    ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
 
 
 class CaseComplete(Case):
     """Represent a complete test case."""
 
-    def __init__(self, environment: Instance, cls: intermediate.ConcreteClass) -> None:
+    def __init__(
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+    ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
 
 
 class CaseTypeViolation(Case):
@@ -1348,13 +1413,19 @@ class CaseTypeViolation(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
 
 
@@ -1363,31 +1434,43 @@ class CasePositivePatternExample(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
         self.property_name = property_name
         self.example_name = example_name
 
 
-class CaseNegativePatternExample(Case):
+class CasePatternViolation(Case):
     """Represent a test case with a property set to a pattern example."""
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
         self.example_name = example_name
 
@@ -1397,13 +1480,19 @@ class CaseRequiredViolation(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
 
 
@@ -1412,13 +1501,19 @@ class CaseMinLengthViolation(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
 
 
@@ -1427,13 +1522,19 @@ class CaseMaxLengthViolation(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
 
 
@@ -1442,13 +1543,19 @@ class CaseDateTimeStampUtcViolationOnFebruary29th(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         property_name: Identifier,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.property_name = property_name
 
 
@@ -1457,31 +1564,43 @@ class CasePositiveValueExample(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         data_type_def_literal: intermediate.EnumerationLiteral,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
         self.data_type_def_literal = data_type_def_literal
         self.example_name = example_name
 
 
-class CaseNegativeValueExample(Case):
+class CaseInvalidValueExample(Case):
     """Represent a test case with a XSD value set to a negative example."""
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         data_type_def_literal: intermediate.EnumerationLiteral,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.data_type_def_literal = data_type_def_literal
         self.example_name = example_name
 
@@ -1491,31 +1610,43 @@ class CasePositiveMinMaxExample(Case):
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         data_type_def_literal: intermediate.EnumerationLiteral,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
         self.data_type_def_literal = data_type_def_literal
         self.example_name = example_name
 
 
-class CaseNegativeMinMaxExample(Case):
+class CaseInvalidMinMaxExample(Case):
     """Represent a test case with a min/max XSD values set to a negative example."""
 
     def __init__(
         self,
-        environment: Instance,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
         cls: intermediate.ConcreteClass,
         data_type_def_literal: intermediate.EnumerationLiteral,
         example_name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.data_type_def_literal = data_type_def_literal
         self.example_name = example_name
 
@@ -1539,15 +1670,17 @@ class CaseEnumViolation(Case):
     # fmt: off
     def __init__(
             self,
-            environment: Instance,
+            container_class: intermediate.ConcreteClass,
+            container: Instance,
             enum: intermediate.Enumeration,
             cls: intermediate.ConcreteClass,
             prop: intermediate.Property
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
+        Case.__init__(
+            self, container_class=container_class, container=container, expected=False,
+            cls=cls)
         self.enum = enum
-        self.cls = cls
         self.prop = prop
 
 
@@ -1555,11 +1688,20 @@ class CasePositiveManual(Case):
     """Represent a custom-tailored positive case."""
 
     def __init__(
-        self, environment: Instance, cls: intermediate.ConcreteClass, name: str
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+        name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=True)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=True,
+            cls=cls,
+        )
         self.name = name
 
 
@@ -1567,11 +1709,20 @@ class CaseConstraintViolation(Case):
     """Represent a custom-tailored negative case that violates a constraint."""
 
     def __init__(
-        self, environment: Instance, cls: intermediate.ConcreteClass, name: str
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+        name: str,
     ) -> None:
         """Initialize with the given values."""
-        Case.__init__(self, environment=environment, expected=False)
-        self.cls = cls
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.name = name
 
 
@@ -1580,15 +1731,15 @@ CaseUnion = Union[
     CaseComplete,
     CaseTypeViolation,
     CasePositivePatternExample,
-    CaseNegativePatternExample,
+    CasePatternViolation,
     CaseRequiredViolation,
     CaseMinLengthViolation,
     CaseMaxLengthViolation,
     CaseDateTimeStampUtcViolationOnFebruary29th,
     CasePositiveValueExample,
-    CaseNegativeValueExample,
+    CaseInvalidValueExample,
     CasePositiveMinMaxExample,
-    CaseNegativeMinMaxExample,
+    CaseInvalidMinMaxExample,
     CaseEnumViolation,
     CasePositiveManual,
     CaseConstraintViolation,
@@ -1712,15 +1863,13 @@ def _make_instance_violate_max_len_constraint(
 
 
 def _generate_additional_cases_for_submodel_element_list(
-    class_graph: ontology.ClassGraph,
-    symbol_table: intermediate.SymbolTable,
+    replication_map: Mapping[Identifier, _Replication],
     constraints_by_class: MutableMapping[
         intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
     ],
-    handyman: Handyman,
+    symbol_table: intermediate.SymbolTable,
 ) -> Iterator[CaseUnion]:
     # region Dependencies
-
     cls = symbol_table.must_find(Identifier("Submodel_element_list"))
     assert isinstance(cls, intermediate.ConcreteClass)
 
@@ -1750,18 +1899,13 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Prepare replicator
 
-    env, path_segments = generate_minimal_instance_in_minimal_environment(
-        cls=cls,
-        class_graph=class_graph,
-        constraints_by_class=constraints_by_class,
-        symbol_table=symbol_table,
-    )
-    handyman.fix_instance(instance=env, path_segments=[])
+    replication = replication_map[Identifier("Submodel_element_list")]
 
-    instance = dereference(environment=env, path_segments=path_segments)
+    replicator = replication.minimal
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1771,7 +1915,7 @@ def _generate_additional_cases_for_submodel_element_list(
         value0.properties["semantic_id"] = semantic_id
 
     with _extend_in_place(path_segments, ["value", 1]):
-        value1 = _generate_minimal_instance(
+        value1 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1787,39 +1931,48 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value_type_list_element"] = xs_boolean_literal.value
     instance.properties["semantic_id_list_element"] = semantic_id
 
-    replicator = EnvironmentInstanceReplicator(
-        environment=env, path_to_instance_from_environment=path_segments
+    # Set up a new replicator
+    replicator = ContainerInstanceReplicator(
+        container=container,
+        container_class=replicator.container_class,
+        path_to_instance=path_segments,
     )
 
     # region Expected: one child without semantic ID
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
     assert isinstance(instance.properties["value"], ListOfInstances)
     del instance.properties["value"].values[0].properties["semantic_id"]
 
     yield CasePositiveManual(
-        environment=env, cls=cls, name="one_child_without_semantic_id"
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="one_child_without_semantic_id",
     )
 
     # endregion
 
     # region Expected: no semantic_id_list_element
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
     del instance.properties["semantic_id_list_element"]
 
     yield CasePositiveManual(
-        environment=env, cls=cls, name="no_semantic_id_list_element"
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="no_semantic_id_list_element",
     )
 
     # endregion
 
     # region Unexpected: values property and range against type_value_list_element
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1829,7 +1982,7 @@ def _generate_additional_cases_for_submodel_element_list(
         value0.properties["semantic_id"] = semantic_id
 
     with _extend_in_place(path_segments, ["value", 1]):
-        value1 = _generate_minimal_instance(
+        value1 = generate_minimal_instance(
             cls=range_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1841,7 +1994,8 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value"] = ListOfInstances(values=[value0, value1])
 
     yield CaseConstraintViolation(
-        environment=env,
+        container_class=replicator.container_class,
+        container=container,
         cls=cls,
         name="against_type_value_list_element",
     )
@@ -1850,10 +2004,10 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Unexpected: a property against value_type_list_element
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1865,7 +2019,8 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value"] = ListOfInstances(values=[value0])
 
     yield CaseConstraintViolation(
-        environment=env,
+        container_class=replicator.container_class,
+        container=container,
         cls=cls,
         name="against_value_type_list_element",
     )
@@ -1874,10 +2029,10 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Unexpected: against semantic_id_list_element
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1889,7 +2044,8 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value"] = ListOfInstances(values=[value0])
 
     yield CaseConstraintViolation(
-        environment=env,
+        container_class=replicator.container_class,
+        container=container,
         cls=cls,
         name="against_semantic_id_list_element",
     )
@@ -1898,10 +2054,10 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Unexpected: no semantic_id_list_element, but mismatch in values
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1911,7 +2067,7 @@ def _generate_additional_cases_for_submodel_element_list(
         value0.properties["semantic_id"] = semantic_id
 
     with _extend_in_place(path_segments, ["value", 1]):
-        value1 = _generate_minimal_instance(
+        value1 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1924,7 +2080,8 @@ def _generate_additional_cases_for_submodel_element_list(
     del instance.properties["semantic_id_list_element"]
 
     yield CaseConstraintViolation(
-        environment=env,
+        container_class=replicator.container_class,
+        container=container,
         cls=cls,
         name="no_semantic_id_list_element_but_semantic_id_mismatch_in_value",
     )
@@ -1933,10 +2090,10 @@ def _generate_additional_cases_for_submodel_element_list(
 
     # region Unexpected: element with ID-short
 
-    env, instance = replicator.replicate()
+    container, instance, path_segments = replicator.replicate()
 
     with _extend_in_place(path_segments, ["value", 0]):
-        value0 = _generate_minimal_instance(
+        value0 = generate_minimal_instance(
             cls=property_cls,
             path_segments=path_segments,
             constraints_by_class=constraints_by_class,
@@ -1950,12 +2107,97 @@ def _generate_additional_cases_for_submodel_element_list(
     instance.properties["value"] = ListOfInstances(values=[value0])
 
     yield CaseConstraintViolation(
-        environment=env,
+        container_class=replicator.container_class,
+        container=container,
         cls=cls,
         name="id_short_in_a_value",
     )
 
     # endregion
+
+
+def _compute_replication_map(
+    symbol_table: intermediate.SymbolTable,
+    constraints_by_class: MutableMapping[
+        intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
+    ],
+    class_graph: ontology.ClassGraph,
+    handyman: Handyman,
+) -> MutableMapping[Identifier, _Replication]:
+    """Determine for each class the starting minimal and complete test case."""
+    environment_cls = symbol_table.must_find(Identifier("Environment"))
+    assert isinstance(environment_cls, intermediate.ConcreteClass)
+
+    replication_map = dict()  # type: MutableMapping[Identifier, _Replication]
+    for symbol in symbol_table.symbols:
+        if not isinstance(symbol, intermediate.ConcreteClass):
+            continue
+
+        if symbol.name not in class_graph.shortest_paths:
+            container = generate_minimal_instance(
+                cls=symbol,
+                path_segments=[],
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
+            handyman.fix_instance(instance=container, path_segments=[])
+
+            min_replicator = ContainerInstanceReplicator(
+                container=container, container_class=symbol, path_to_instance=[]
+            )
+
+            make_minimal_instance_complete(
+                instance=container,
+                path_segments=[],
+                cls=symbol,
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
+
+            handyman.fix_instance(instance=container, path_segments=[])
+
+            complete_replicator = ContainerInstanceReplicator(
+                container=container, container_class=symbol, path_to_instance=[]
+            )
+        else:
+            env, path_segments = generate_minimal_instance_in_minimal_environment(
+                cls=symbol,
+                class_graph=class_graph,
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
+
+            instance = dereference(container=env, path_segments=path_segments)
+
+            handyman.fix_instance(instance=env, path_segments=[])
+
+            min_replicator = ContainerInstanceReplicator(
+                container=env,
+                container_class=environment_cls,
+                path_to_instance=path_segments,
+            )
+
+            make_minimal_instance_complete(
+                instance=instance,
+                path_segments=path_segments,
+                cls=symbol,
+                constraints_by_class=constraints_by_class,
+                symbol_table=symbol_table,
+            )
+
+            handyman.fix_instance(instance=env, path_segments=[])
+
+            complete_replicator = ContainerInstanceReplicator(
+                container=env,
+                container_class=environment_cls,
+                path_to_instance=path_segments,
+            )
+
+        replication_map[symbol.name] = _Replication(
+            minimal=min_replicator, complete=complete_replicator
+        )
+
+    return replication_map
 
 
 def generate(
@@ -1970,80 +2212,37 @@ def generate(
         symbol_table=symbol_table, constraints_by_class=constraints_by_class
     )
 
-    # region Generate the minimal and complete example for the Environment
-
-    environment_cls = symbol_table.must_find(Identifier("Environment"))
-    assert isinstance(environment_cls, intermediate.ConcreteClass)
-
-    # NOTE (mristin, 2022-06-21):
-    # This is a special case as we do not reach the environment from an environment.
-    instance = _generate_minimal_instance(
-        cls=environment_cls,
-        path_segments=[],
-        constraints_by_class=constraints_by_class,
+    replication_map = _compute_replication_map(
         symbol_table=symbol_table,
-    )
-
-    yield CaseMinimal(environment=instance, cls=environment_cls)
-
-    _make_minimal_instance_complete(
-        instance=instance,
-        path_segments=[],
-        cls=environment_cls,
         constraints_by_class=constraints_by_class,
-        symbol_table=symbol_table,
+        class_graph=class_graph,
+        handyman=handyman,
     )
-
-    yield CaseComplete(environment=instance, cls=environment_cls)
-
-    # endregion
 
     for symbol in symbol_table.symbols:
         if not isinstance(symbol, intermediate.ConcreteClass):
             continue
 
-        if symbol.name not in class_graph.shortest_paths:
-            # NOTE (mristin, 2022-05-12):
-            # Skip the unreachable classes from the environment
-            continue
+        replication = replication_map[symbol.name]
 
         # region Minimal example
 
-        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
-            cls=symbol,
-            class_graph=class_graph,
-            constraints_by_class=constraints_by_class,
-            symbol_table=symbol_table,
-        )
+        replicator = replication.minimal
+        container, _, _ = replicator.replicate()
 
-        handyman.fix_instance(minimal_env, path_segments=[])
-
-        yield CaseMinimal(environment=minimal_env, cls=symbol)
-
-        replicator_minimal = EnvironmentInstanceReplicator(
-            environment=minimal_env, path_to_instance_from_environment=path_segments
+        yield CaseMinimal(
+            container_class=replicator.container_class, container=container, cls=symbol
         )
 
         # endregion
 
         # region Complete example
 
-        env, instance = replicator_minimal.replicate()
+        replicator = replication.complete
+        container, _, _ = replicator.replicate()
 
-        _make_minimal_instance_complete(
-            instance=instance,
-            path_segments=path_segments,
-            cls=symbol,
-            constraints_by_class=constraints_by_class,
-            symbol_table=symbol_table,
-        )
-
-        handyman.fix_instance(instance=env, path_segments=[])
-
-        yield CaseComplete(environment=env, cls=symbol)
-
-        replicator_complete = EnvironmentInstanceReplicator(
-            environment=env, path_to_instance_from_environment=path_segments
+        yield CaseComplete(
+            container_class=replicator.container_class, container=container, cls=symbol
         )
 
         # endregion
@@ -2051,7 +2250,8 @@ def generate(
         # region Type violation
 
         for prop in symbol.properties:
-            env, instance = replicator_complete.replicate()
+            replicator = replication.complete
+            container, instance, path_segments = replicator.replicate()
 
             type_anno = intermediate.beneath_optional(prop.type_annotation)
 
@@ -2073,7 +2273,10 @@ def generate(
                     instance.properties[prop.name] = "Unexpected string value"
 
             yield CaseTypeViolation(
-                environment=env, cls=symbol, property_name=prop.name
+                container_class=replicator.container_class,
+                container=container,
+                cls=symbol,
+                property_name=prop.name,
             )
 
         # endregion
@@ -2101,24 +2304,28 @@ def generate(
             ]
 
             for example_name, example_text in pattern_examples.positives.items():
-                env, instance = replicator_minimal.replicate()
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
 
                 instance.properties[prop.name] = example_text
 
                 yield CasePositivePatternExample(
-                    environment=env,
+                    container_class=replicator.container_class,
+                    container=container,
                     cls=symbol,
                     property_name=prop.name,
                     example_name=example_name,
                 )
 
             for example_name, example_text in pattern_examples.negatives.items():
-                env, instance = replicator_minimal.replicate()
+                replicator = replication.minimal
+                container, instance, _ = replicator.replicate()
 
                 instance.properties[prop.name] = example_text
 
-                yield CaseNegativePatternExample(
-                    environment=env,
+                yield CasePatternViolation(
+                    container_class=replicator.container_class,
+                    container=container,
                     cls=symbol,
                     property_name=prop.name,
                     example_name=example_name,
@@ -2132,12 +2339,16 @@ def generate(
             if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
                 continue
 
-            env, instance = replicator_minimal.replicate()
+            replicator = replication.minimal
+            container, instance, path_segments = replicator.replicate()
 
             del instance.properties[prop.name]
 
             yield CaseRequiredViolation(
-                environment=env, cls=symbol, property_name=prop.name
+                container_class=replicator.container_class,
+                container=container,
+                cls=symbol,
+                property_name=prop.name,
             )
 
         # endregion
@@ -2153,18 +2364,23 @@ def generate(
                 continue
 
             if len_constraint.min_value is not None and len_constraint.min_value > 0:
-                env, instance = replicator_minimal.replicate()
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
 
                 _make_instance_violate_min_len_constraint(
                     instance=instance, prop=prop, len_constraint=len_constraint
                 )
 
                 yield CaseMinLengthViolation(
-                    environment=env, cls=symbol, property_name=prop.name
+                    container_class=replicator.container_class,
+                    container=container,
+                    cls=symbol,
+                    property_name=prop.name,
                 )
 
             if len_constraint.max_value is not None:
-                env, instance = replicator_minimal.replicate()
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
 
                 _make_instance_violate_max_len_constraint(
                     instance=instance,
@@ -2174,7 +2390,10 @@ def generate(
                 )
 
                 yield CaseMaxLengthViolation(
-                    environment=env, cls=symbol, property_name=prop.name
+                    container_class=replicator.container_class,
+                    container=container,
+                    cls=symbol,
+                    property_name=prop.name,
                 )
 
         # endregion
@@ -2192,7 +2411,8 @@ def generate(
                 isinstance(type_anno, intermediate.OurTypeAnnotation)
                 and type_anno.symbol is date_time_stamp_utc_symbol
             ):
-                env, instance = replicator_minimal.replicate()
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
 
                 with _extend_in_place(path_segments, [prop.name]):
                     time_of_day = _generate_time_of_day(path_segments=path_segments)
@@ -2200,7 +2420,10 @@ def generate(
                     instance.properties[prop.name] = f"2022-02-29T{time_of_day}Z"
 
                     yield CaseDateTimeStampUtcViolationOnFebruary29th(
-                        environment=env, cls=symbol, property_name=prop.name
+                        container_class=replicator.container_class,
+                        container=container,
+                        cls=symbol,
+                        property_name=prop.name,
                     )
 
         # endregion
@@ -2218,18 +2441,7 @@ def generate(
     for cls in (property_cls, range_cls, extension_cls, qualifier_cls):
         assert isinstance(cls, intermediate.ConcreteClass)
 
-        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
-            cls=cls,
-            class_graph=class_graph,
-            constraints_by_class=constraints_by_class,
-            symbol_table=symbol_table,
-        )
-
-        handyman.fix_instance(instance=minimal_env, path_segments=[])
-
-        replicator_minimal = EnvironmentInstanceReplicator(
-            environment=minimal_env, path_to_instance_from_environment=path_segments
-        )
+        replication = replication_map[cls.name]
 
         for literal in data_type_def_xsd_symbol.literals:
             examples = frozen_examples_xs_value.BY_VALUE_TYPE.get(literal.value, None)
@@ -2243,26 +2455,30 @@ def generate(
 
             if cls in (property_cls, extension_cls, qualifier_cls):
                 for example_name, example_value in examples.positives.items():
-                    env, instance = replicator_minimal.replicate()
+                    replicator = replication.minimal
+                    container, instance, path_segments = replicator.replicate()
 
                     instance.properties["value"] = example_value
                     instance.properties["value_type"] = literal.value
 
                     yield CasePositiveValueExample(
-                        environment=env,
+                        container_class=replicator.container_class,
+                        container=container,
                         cls=cls,
                         data_type_def_literal=literal,
                         example_name=example_name,
                     )
 
                 for example_name, example_value in examples.negatives.items():
-                    env, instance = replicator_minimal.replicate()
+                    replicator = replication.minimal
+                    container, instance, path_segments = replicator.replicate()
 
                     instance.properties["value"] = example_value
                     instance.properties["value_type"] = literal.value
 
-                    yield CaseNegativeValueExample(
-                        environment=env,
+                    yield CaseInvalidValueExample(
+                        container_class=replicator.container_class,
+                        container=container,
                         cls=cls,
                         data_type_def_literal=literal,
                         example_name=example_name,
@@ -2270,28 +2486,32 @@ def generate(
 
             elif cls is range_cls:
                 for example_name, example_value in examples.positives.items():
-                    env, instance = replicator_minimal.replicate()
+                    replicator = replication.minimal
+                    container, instance, path_segments = replicator.replicate()
 
                     instance.properties["min"] = example_value
                     instance.properties["max"] = example_value
                     instance.properties["value_type"] = literal.value
 
                     yield CasePositiveMinMaxExample(
-                        environment=env,
+                        container_class=replicator.container_class,
+                        container=container,
                         cls=cls,
                         data_type_def_literal=literal,
                         example_name=example_name,
                     )
 
                 for example_name, example_value in examples.negatives.items():
-                    env, instance = replicator_minimal.replicate()
+                    replicator = replication.minimal
+                    container, instance, path_segments = replicator.replicate()
 
                     instance.properties["min"] = example_value
                     instance.properties["max"] = example_value
                     instance.properties["value_type"] = literal.value
 
-                    yield CaseNegativeMinMaxExample(
-                        environment=env,
+                    yield CaseInvalidMinMaxExample(
+                        container_class=replicator.container_class,
+                        container=container,
                         cls=cls,
                         data_type_def_literal=literal,
                         example_name=example_name,
@@ -2332,16 +2552,13 @@ def generate(
             enums_props_classes.append((type_anno.symbol, prop, symbol))
 
     for enum, prop, cls in enums_props_classes:
-        minimal_env, path_segments = generate_minimal_instance_in_minimal_environment(
-            cls=cls,
-            class_graph=class_graph,
-            constraints_by_class=constraints_by_class,
-            symbol_table=symbol_table,
-        )
+        replication = replication_map[cls.name]
+
+        replicator = replication.minimal
+        container, instance, path_segments = replicator.replicate()
 
         literal_value_set = {literal.value for literal in enum.literals}
 
-        instance = dereference(environment=minimal_env, path_segments=path_segments)
         with _extend_in_place(path_segments, [prop.name]):
             literal_value = "invalid-literal"
             while literal_value in literal_value_set:
@@ -2349,17 +2566,18 @@ def generate(
 
             instance.properties[prop.name] = literal_value
 
-        yield CaseEnumViolation(environment=minimal_env, enum=enum, cls=cls, prop=prop)
+        yield CaseEnumViolation(
+            container_class=replicator.container_class,
+            container=container,
+            enum=enum,
+            cls=cls,
+            prop=prop,
+        )
 
     # endregion
 
     yield from _generate_additional_cases_for_submodel_element_list(
-        class_graph=class_graph,
-        symbol_table=symbol_table,
+        replication_map=replication_map,
         constraints_by_class=constraints_by_class,
-        handyman=handyman,
+        symbol_table=symbol_table,
     )
-
-    # BEFORE-RELEASE (mristin, 2022-06-19):
-    # Manually write Unexpected/ConstraintViolation/{class name}/
-    # {describe how we break it somehow}.json

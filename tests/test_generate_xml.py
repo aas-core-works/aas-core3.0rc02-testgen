@@ -111,7 +111,9 @@ class Test_against_recorded(unittest.TestCase):
         schema_pth = test_data_dir / "schema.xsd"
         schema = xmlschema.XMLSchema(str(schema_pth))
 
-        ok_files = sorted(test_data_dir.glob("Xml/Expected/**/*.xml"))
+        ok_files = sorted(
+            test_data_dir.glob("Xml/ContainedInEnvironment/Expected/**/*.xml")
+        )
 
         # NOTE (mristin, 2022-06-20):
         # We can not fight xmlschema. It seems that it doesn't work well with
@@ -119,38 +121,52 @@ class Test_against_recorded(unittest.TestCase):
         excluded_list = []  # type: List[pathlib.Path]
 
         excluded_list.extend(
-            (test_data_dir / "Xml/Expected/blob/contentTypeOverPatternExamples").glob(
-                "fuzzed*.xml"
-            )
-        )
-        excluded_list.extend(
-            (test_data_dir / "Xml/Expected/extension/OverValueExamples/String").glob(
-                "fuzzed*.xml"
-            )
-        )
-        excluded_list.extend(
-            (test_data_dir / "Xml/Expected/file/contentTypeOverPatternExamples").glob(
-                "fuzzed*.xml"
-            )
-        )
-        excluded_list.extend(
-            (test_data_dir / "Xml/Expected/property/OverValueExamples/String").glob(
-                "fuzzed*.xml"
-            )
-        )
-        excluded_list.extend(
-            (test_data_dir / "Xml/Expected/qualifier/OverValueExamples/String").glob(
-                "fuzzed*.xml"
-            )
-        )
-        excluded_list.extend(
-            (test_data_dir / "Xml/Expected/range/OverMinMaxExamples/String").glob(
-                "fuzzed*.xml"
-            )
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "blob/contentTypeOverPatternExamples"
+            ).glob("fuzzed*.xml")
         )
         excluded_list.extend(
             (
-                test_data_dir / "Xml/Expected/resource/contentTypeOverPatternExamples"
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "extension/OverValueExamples/String"
+            ).glob("fuzzed*.xml")
+        )
+        excluded_list.extend(
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "file/contentTypeOverPatternExamples"
+            ).glob("fuzzed*.xml")
+        )
+        excluded_list.extend(
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "property/OverValueExamples/String"
+            ).glob("fuzzed*.xml")
+        )
+        excluded_list.extend(
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "qualifier/OverValueExamples/String"
+            ).glob("fuzzed*.xml")
+        )
+        excluded_list.extend(
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "range/OverMinMaxExamples/String"
+            ).glob("fuzzed*.xml")
+        )
+        excluded_list.extend(
+            (
+                test_data_dir
+                / "Xml/ContainedInEnvironment/Expected"
+                / "resource/contentTypeOverPatternExamples"
             ).glob("fuzzed*.xml")
         )
 

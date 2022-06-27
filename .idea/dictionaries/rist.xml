@@ -8,6 +8,7 @@
       <w>lineno</w>
       <w>submodelsinvariant</w>
       <w>testgen</w>
+      <w>unreachables</w>
     </words>
   </dictionary>
 </component>
