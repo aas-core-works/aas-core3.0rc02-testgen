@@ -45,7 +45,7 @@ def _relative_path(
 
     else:
         assert test_case.__class__.__name__.startswith("Case")
-        cause = test_case.__class__.__name__[len("Case"):]
+        cause = test_case.__class__.__name__[len("Case") :]
 
         base_pth = base_pth / "Unexpected" / cause / cls_name
 
