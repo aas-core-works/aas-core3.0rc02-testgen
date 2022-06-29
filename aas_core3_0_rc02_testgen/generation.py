@@ -274,7 +274,7 @@ def _generate_time_of_day(path_segments: List[Union[int, str]]) -> str:
         isinstance(type_anno, intermediate.PrimitiveTypeAnnotation)
         or (
             isinstance(type_anno, intermediate.OurTypeAnnotation)
-            and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
+            and isinstance(type_anno.our_type, intermediate.ConstrainedPrimitive)
         ),
     )[1]
 )
@@ -291,9 +291,9 @@ def _generate_primitive_value(
     if isinstance(type_annotation, intermediate.PrimitiveTypeAnnotation):
         primitive_type = type_annotation.a_type
     elif isinstance(type_annotation, intermediate.OurTypeAnnotation) and isinstance(
-        type_annotation.symbol, intermediate.ConstrainedPrimitive
+        type_annotation.our_type, intermediate.ConstrainedPrimitive
     ):
-        primitive_type = type_annotation.symbol.constrainee
+        primitive_type = type_annotation.our_type.constrainee
     else:
         raise AssertionError(f"Unexpected {type(type_annotation)}: {type_annotation=}")
 
@@ -529,7 +529,7 @@ def _generate_property_value(
     """
     if isinstance(type_annotation, intermediate.PrimitiveTypeAnnotation) or (
         isinstance(type_annotation, intermediate.OurTypeAnnotation)
-        and isinstance(type_annotation.symbol, intermediate.ConstrainedPrimitive)
+        and isinstance(type_annotation.our_type, intermediate.ConstrainedPrimitive)
     ):
         return _generate_primitive_value(
             type_annotation=type_annotation,
@@ -550,27 +550,27 @@ def _generate_property_value(
                 f"of type {type_annotation} at {_posix_path(path_segments)}"
             )
 
-        if isinstance(type_annotation.symbol, intermediate.Enumeration):
+        if isinstance(type_annotation.our_type, intermediate.Enumeration):
             hsh_as_int = int(_hash_path(path_segments=path_segments), base=16)
 
-            text = type_annotation.symbol.literals[
-                hsh_as_int % len(type_annotation.symbol.literals)
+            text = type_annotation.our_type.literals[
+                hsh_as_int % len(type_annotation.our_type.literals)
             ].value
 
             return text
 
-        elif isinstance(type_annotation.symbol, intermediate.ConstrainedPrimitive):
+        elif isinstance(type_annotation.our_type, intermediate.ConstrainedPrimitive):
             raise AssertionError(
-                f"Should have been handled before: {type_annotation.symbol}"
+                f"Should have been handled before: {type_annotation.our_type}"
             )
 
         elif isinstance(
-            type_annotation.symbol,
+            type_annotation.our_type,
             (intermediate.AbstractClass, intermediate.ConcreteClass),
         ):
-            return generate_instance(type_annotation.symbol, path_segments)
+            return generate_instance(type_annotation.our_type, path_segments)
         else:
-            aas_core_codegen.common.assert_never(type_annotation.symbol)
+            aas_core_codegen.common.assert_never(type_annotation.our_type)
 
     elif isinstance(type_annotation, intermediate.ListTypeAnnotation):
         if pattern_constraints is not None:
@@ -582,7 +582,7 @@ def _generate_property_value(
         if not isinstance(
             type_annotation.items, intermediate.OurTypeAnnotation
         ) or not isinstance(
-            type_annotation.items.symbol,
+            type_annotation.items.our_type,
             (intermediate.AbstractClass, intermediate.ConcreteClass),
         ):
             raise NotImplementedError(
@@ -591,7 +591,7 @@ def _generate_property_value(
             )
 
         with _extend_in_place(path_segments, [0]):
-            instance = generate_instance(type_annotation.items.symbol, path_segments)
+            instance = generate_instance(type_annotation.items.our_type, path_segments)
 
         result = ListOfInstances(values=[instance])
 
@@ -636,7 +636,7 @@ def _generate_concrete_minimal_instance(
     The generation is deterministic, *i.e.*, re-generating with the same input
     should yield the same output.
     """
-    reference_cls = symbol_table.must_find(Identifier("Reference"))
+    reference_cls = symbol_table.must_find_concrete_class(Identifier("Reference"))
     if cls is reference_cls:
         # NOTE (mristin, 2022-06-19):
         # We generate a global reference by default, since this makes for much better
@@ -769,8 +769,7 @@ class Handyman:
 
         # region Ensure that the dispatch map is correct
         for cls_name in self._dispatch_concrete:
-            cls = self.symbol_table.must_find(name=Identifier(cls_name))
-            assert isinstance(cls, intermediate.ConcreteClass)
+            _ = self.symbol_table.must_find_concrete_class(name=Identifier(cls_name))
         # endregion
 
         # region Ensure that the dispatch methods are appropriate
@@ -787,13 +786,13 @@ class Handyman:
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
         """Fix the ``instance`` recursively in-place."""
-        cls = self.symbol_table.must_find(name=instance.model_type)
-        assert isinstance(cls, intermediate.ConcreteClass)
+        cls = self.symbol_table.must_find_concrete_class(name=instance.model_type)
 
         # region Fix for the ancestor classes
 
-        data_element_cls = self.symbol_table.must_find(Identifier("Data_element"))
-        assert isinstance(data_element_cls, intermediate.AbstractClass)
+        data_element_cls = self.symbol_table.must_find_abstract_class(
+            Identifier("Data_element")
+        )
 
         if cls.is_subclass_of(data_element_cls):
             category_value = instance.properties.get("category", None)
@@ -860,8 +859,9 @@ class Handyman:
         # Override that the direction is output so that we can always set
         # the max interval
         if "direction" in instance.properties:
-            direction_enum = self.symbol_table.must_find(name=Identifier("Direction"))
-            assert isinstance(direction_enum, intermediate.Enumeration)
+            direction_enum = self.symbol_table.must_find_enumeration(
+                Identifier("Direction")
+            )
 
             instance.properties["direction"] = direction_enum.literals_by_name[
                 "Output"
@@ -917,8 +917,9 @@ class Handyman:
     ) -> None:
         entity_type = instance.properties.get("entity_type", None)
         if entity_type is not None:
-            entity_type_enum = self.symbol_table.must_find(Identifier("Entity_type"))
-            assert isinstance(entity_type_enum, intermediate.Enumeration)
+            entity_type_enum = self.symbol_table.must_find_enumeration(
+                Identifier("Entity_type")
+            )
 
             self_managed_entity_literal = entity_type_enum.literals_by_name[
                 "Self_managed_entity"
@@ -956,8 +957,9 @@ class Handyman:
     def _fix_extension(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
-        extension_cls = self.symbol_table.must_find(Identifier("Extension"))
-        assert isinstance(extension_cls, intermediate.ConcreteClass)
+        extension_cls = self.symbol_table.must_find_concrete_class(
+            Identifier("Extension")
+        )
 
         # NOTE (mristin, 2022-06-20):
         # We need to assert this as we are automatically setting the ``value_type``.
@@ -975,8 +977,9 @@ class Handyman:
     def _fix_property(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
-        property_cls = self.symbol_table.must_find(Identifier("Property"))
-        assert isinstance(property_cls, intermediate.ConcreteClass)
+        property_cls = self.symbol_table.must_find_concrete_class(
+            Identifier("Property")
+        )
 
         # NOTE (mristin, 2022-06-20):
         # We need to assert this as we are automatically setting the ``value_type``.
@@ -994,8 +997,9 @@ class Handyman:
     def _fix_qualifier(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
-        qualifier_cls = self.symbol_table.must_find(Identifier("Qualifier"))
-        assert isinstance(qualifier_cls, intermediate.ConcreteClass)
+        qualifier_cls = self.symbol_table.must_find_concrete_class(
+            Identifier("Qualifier")
+        )
 
         # NOTE (mristin, 2022-06-20):
         # We need to assert this as we are automatically setting the ``value_type``.
@@ -1013,8 +1017,7 @@ class Handyman:
     def _fix_range(
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
-        range_cls = self.symbol_table.must_find(Identifier("Range"))
-        assert isinstance(range_cls, intermediate.ConcreteClass)
+        range_cls = self.symbol_table.must_find_concrete_class(Identifier("Range"))
 
         # NOTE (mristin, 2022-06-20):
         # We need to assert this as we are automatically setting the ``value_type``.
@@ -1050,8 +1053,9 @@ class Handyman:
 
         # region Fix qualifiers for the constraint AASd-119
 
-        qualifier_kind_enum = self.symbol_table.must_find(Identifier("Qualifier_kind"))
-        assert isinstance(qualifier_kind_enum, intermediate.Enumeration)
+        qualifier_kind_enum = self.symbol_table.must_find_enumeration(
+            Identifier("Qualifier_kind")
+        )
 
         qualifier_kind_template_qualifier = qualifier_kind_enum.literals_by_name[
             "Template_qualifier"
@@ -1071,11 +1075,9 @@ class Handyman:
                     break
 
             if must_be_modeling_kind_template:
-                modeling_kind_enum = self.symbol_table.must_find(
+                modeling_kind_enum = self.symbol_table.must_find_enumeration(
                     Identifier("Modeling_kind")
                 )
-
-                assert isinstance(modeling_kind_enum, intermediate.Enumeration)
 
                 modeling_kind_template = modeling_kind_enum.literals_by_name[
                     "Template"
@@ -1113,20 +1115,19 @@ class Handyman:
             # Re-create the elements according to a fixed recipe. This is brutish, but
             # otherwise it is too complex to get the fixing logic right.
 
-            property_cls = self.symbol_table.must_find(Identifier("Property"))
-            assert isinstance(property_cls, intermediate.ConcreteClass)
+            property_cls = self.symbol_table.must_find_concrete_class(
+                Identifier("Property")
+            )
 
-            data_type_def_xsd_enum = self.symbol_table.must_find(
+            data_type_def_xsd_enum = self.symbol_table.must_find_enumeration(
                 Identifier("Data_type_def_XSD")
             )
-            assert isinstance(data_type_def_xsd_enum, intermediate.Enumeration)
 
             xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
 
-            aas_submodel_elements_enum = self.symbol_table.must_find(
+            aas_submodel_elements_enum = self.symbol_table.must_find_enumeration(
                 Identifier("AAS_submodel_elements")
             )
-            assert isinstance(aas_submodel_elements_enum, intermediate.Enumeration)
 
             property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
 
@@ -1183,8 +1184,9 @@ def generate_minimal_instance_in_minimal_environment(
     if len(shortest_path_in_class_graph_from_environment) == 0:
         # NOTE (mristin, 2022-06-25):
         # Cover the edge case where we have to generate the environment itself
-        environment_cls = symbol_table.must_find(Identifier("Environment"))
-        assert isinstance(environment_cls, intermediate.ConcreteClass)
+        environment_cls = symbol_table.must_find_concrete_class(
+            Identifier("Environment")
+        )
 
         return (
             generate_minimal_instance(
@@ -1659,7 +1661,7 @@ class CaseEnumViolation(Case):
         lambda enum, prop: (
             type_anno := intermediate.beneath_optional(prop.type_annotation),
             isinstance(type_anno, intermediate.OurTypeAnnotation)
-            and type_anno.symbol == enum,
+            and type_anno.our_type == enum,
         )[1],
         "Enum corresponds to the property",
     )
@@ -1780,8 +1782,8 @@ def _make_instance_violate_min_len_constraint(
 
     elif (
         isinstance(type_anno, intermediate.OurTypeAnnotation)
-        and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
-        and (type_anno.symbol.constrainee is intermediate.PrimitiveType.STR)
+        and isinstance(type_anno.our_type, intermediate.ConstrainedPrimitive)
+        and (type_anno.our_type.constrainee is intermediate.PrimitiveType.STR)
     ):
         instance.properties[prop.name] = ""
 
@@ -1844,8 +1846,8 @@ def _make_instance_violate_max_len_constraint(
 
     elif (
         isinstance(type_anno, intermediate.OurTypeAnnotation)
-        and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
-        and (type_anno.symbol.constrainee is intermediate.PrimitiveType.STR)
+        and isinstance(type_anno.our_type, intermediate.ConstrainedPrimitive)
+        and (type_anno.our_type.constrainee is intermediate.PrimitiveType.STR)
     ):
         instance.properties[prop.name] = too_long_text
         handled = True
@@ -1870,27 +1872,24 @@ def _generate_additional_cases_for_submodel_element_list(
     symbol_table: intermediate.SymbolTable,
 ) -> Iterator[CaseUnion]:
     # region Dependencies
-    cls = symbol_table.must_find(Identifier("Submodel_element_list"))
-    assert isinstance(cls, intermediate.ConcreteClass)
+    cls = symbol_table.must_find_concrete_class(Identifier("Submodel_element_list"))
 
-    property_cls = symbol_table.must_find(Identifier("Property"))
-    assert isinstance(property_cls, intermediate.ConcreteClass)
+    property_cls = symbol_table.must_find_concrete_class(Identifier("Property"))
 
-    data_type_def_xsd_enum = symbol_table.must_find(Identifier("Data_type_def_XSD"))
-    assert isinstance(data_type_def_xsd_enum, intermediate.Enumeration)
+    data_type_def_xsd_enum = symbol_table.must_find_enumeration(
+        Identifier("Data_type_def_XSD")
+    )
 
     xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
     xs_int_literal = data_type_def_xsd_enum.literals_by_name["Int"]
 
-    aas_submodel_elements_enum = symbol_table.must_find(
+    aas_submodel_elements_enum = symbol_table.must_find_enumeration(
         Identifier("AAS_submodel_elements")
     )
-    assert isinstance(aas_submodel_elements_enum, intermediate.Enumeration)
 
     property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
 
-    range_cls = symbol_table.must_find(Identifier("Range"))
-    assert isinstance(range_cls, intermediate.ConcreteClass)
+    range_cls = symbol_table.must_find_concrete_class(Identifier("Range"))
 
     semantic_id = _generate_global_reference(path_segments=["some-dummy"])
     another_semantic_id = _generate_global_reference(path_segments=["another-dummy"])
@@ -2125,17 +2124,16 @@ def _compute_replication_map(
     handyman: Handyman,
 ) -> MutableMapping[Identifier, _Replication]:
     """Determine for each class the starting minimal and complete test case."""
-    environment_cls = symbol_table.must_find(Identifier("Environment"))
-    assert isinstance(environment_cls, intermediate.ConcreteClass)
+    environment_cls = symbol_table.must_find_concrete_class(Identifier("Environment"))
 
     replication_map = dict()  # type: MutableMapping[Identifier, _Replication]
-    for symbol in symbol_table.symbols:
-        if not isinstance(symbol, intermediate.ConcreteClass):
+    for our_type in symbol_table.our_types:
+        if not isinstance(our_type, intermediate.ConcreteClass):
             continue
 
-        if symbol.name not in class_graph.shortest_paths:
+        if our_type.name not in class_graph.shortest_paths:
             container = generate_minimal_instance(
-                cls=symbol,
+                cls=our_type,
                 path_segments=[],
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
@@ -2143,13 +2141,13 @@ def _compute_replication_map(
             handyman.fix_instance(instance=container, path_segments=[])
 
             min_replicator = ContainerInstanceReplicator(
-                container=container, container_class=symbol, path_to_instance=[]
+                container=container, container_class=our_type, path_to_instance=[]
             )
 
             make_minimal_instance_complete(
                 instance=container,
                 path_segments=[],
-                cls=symbol,
+                cls=our_type,
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
             )
@@ -2157,11 +2155,11 @@ def _compute_replication_map(
             handyman.fix_instance(instance=container, path_segments=[])
 
             complete_replicator = ContainerInstanceReplicator(
-                container=container, container_class=symbol, path_to_instance=[]
+                container=container, container_class=our_type, path_to_instance=[]
             )
         else:
             env, path_segments = generate_minimal_instance_in_minimal_environment(
-                cls=symbol,
+                cls=our_type,
                 class_graph=class_graph,
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
@@ -2180,7 +2178,7 @@ def _compute_replication_map(
             make_minimal_instance_complete(
                 instance=instance,
                 path_segments=path_segments,
-                cls=symbol,
+                cls=our_type,
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
             )
@@ -2193,7 +2191,7 @@ def _compute_replication_map(
                 path_to_instance=path_segments,
             )
 
-        replication_map[symbol.name] = _Replication(
+        replication_map[our_type.name] = _Replication(
             minimal=min_replicator, complete=complete_replicator
         )
 
@@ -2219,11 +2217,11 @@ def generate(
         handyman=handyman,
     )
 
-    for symbol in symbol_table.symbols:
-        if not isinstance(symbol, intermediate.ConcreteClass):
+    for our_type in symbol_table.our_types:
+        if not isinstance(our_type, intermediate.ConcreteClass):
             continue
 
-        replication = replication_map[symbol.name]
+        replication = replication_map[our_type.name]
 
         # region Minimal example
 
@@ -2231,7 +2229,9 @@ def generate(
         container, _, _ = replicator.replicate()
 
         yield CaseMinimal(
-            container_class=replicator.container_class, container=container, cls=symbol
+            container_class=replicator.container_class,
+            container=container,
+            cls=our_type,
         )
 
         # endregion
@@ -2242,14 +2242,16 @@ def generate(
         container, _, _ = replicator.replicate()
 
         yield CaseComplete(
-            container_class=replicator.container_class, container=container, cls=symbol
+            container_class=replicator.container_class,
+            container=container,
+            cls=our_type,
         )
 
         # endregion
 
         # region Type violation
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             replicator = replication.complete
             container, instance, path_segments = replicator.replicate()
 
@@ -2261,7 +2263,7 @@ def generate(
 
             if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation) or (
                 isinstance(type_anno, intermediate.OurTypeAnnotation)
-                and isinstance(type_anno.symbol, intermediate.ConstrainedPrimitive)
+                and isinstance(type_anno.our_type, intermediate.ConstrainedPrimitive)
             ):
                 with _extend_in_place(path_segments, [prop.name]):
                     instance.properties[prop.name] = _generate_global_reference(
@@ -2275,7 +2277,7 @@ def generate(
             yield CaseTypeViolation(
                 container_class=replicator.container_class,
                 container=container,
-                cls=symbol,
+                cls=our_type,
                 property_name=prop.name,
             )
 
@@ -2283,9 +2285,9 @@ def generate(
 
         # region Positive and negative pattern examples
 
-        constraints_by_prop = constraints_by_class[symbol]
+        constraints_by_prop = constraints_by_class[our_type]
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             pattern_constraints = constraints_by_prop.patterns_by_property.get(
                 prop, None
             )
@@ -2312,7 +2314,7 @@ def generate(
                 yield CasePositivePatternExample(
                     container_class=replicator.container_class,
                     container=container,
-                    cls=symbol,
+                    cls=our_type,
                     property_name=prop.name,
                     example_name=example_name,
                 )
@@ -2326,7 +2328,7 @@ def generate(
                 yield CasePatternViolation(
                     container_class=replicator.container_class,
                     container=container,
-                    cls=symbol,
+                    cls=our_type,
                     property_name=prop.name,
                     example_name=example_name,
                 )
@@ -2335,7 +2337,7 @@ def generate(
 
         # region Required violation
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
                 continue
 
@@ -2347,7 +2349,7 @@ def generate(
             yield CaseRequiredViolation(
                 container_class=replicator.container_class,
                 container=container,
-                cls=symbol,
+                cls=our_type,
                 property_name=prop.name,
             )
 
@@ -2355,7 +2357,7 @@ def generate(
 
         # region Length violation
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             len_constraint = constraints_by_prop.len_constraints_by_property.get(
                 prop, None
             )
@@ -2374,7 +2376,7 @@ def generate(
                 yield CaseMinLengthViolation(
                     container_class=replicator.container_class,
                     container=container,
-                    cls=symbol,
+                    cls=our_type,
                     property_name=prop.name,
                 )
 
@@ -2392,7 +2394,7 @@ def generate(
                 yield CaseMaxLengthViolation(
                     container_class=replicator.container_class,
                     container=container,
-                    cls=symbol,
+                    cls=our_type,
                     property_name=prop.name,
                 )
 
@@ -2400,16 +2402,15 @@ def generate(
 
         # region Break date-time with UTC with February 29th
 
-        date_time_stamp_utc_symbol = symbol_table.must_find(
+        date_time_stamp_utc_symbol = symbol_table.must_find_constrained_primitive(
             Identifier("Date_time_stamp_UTC")
         )
-        assert isinstance(date_time_stamp_utc_symbol, intermediate.ConstrainedPrimitive)
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             type_anno = intermediate.beneath_optional(prop.type_annotation)
             if (
                 isinstance(type_anno, intermediate.OurTypeAnnotation)
-                and type_anno.symbol is date_time_stamp_utc_symbol
+                and type_anno.our_type is date_time_stamp_utc_symbol
             ):
                 replicator = replication.minimal
                 container, instance, path_segments = replicator.replicate()
@@ -2422,7 +2423,7 @@ def generate(
                     yield CaseDateTimeStampUtcViolationOnFebruary29th(
                         container_class=replicator.container_class,
                         container=container,
-                        cls=symbol,
+                        cls=our_type,
                         property_name=prop.name,
                     )
 
@@ -2430,17 +2431,16 @@ def generate(
 
     # region Generate positive and negative examples for Property and Range
 
-    property_cls = symbol_table.must_find(Identifier("Property"))
-    range_cls = symbol_table.must_find(Identifier("Range"))
-    extension_cls = symbol_table.must_find(Identifier("Extension"))
-    qualifier_cls = symbol_table.must_find(Identifier("Qualifier"))
+    property_cls = symbol_table.must_find_concrete_class(Identifier("Property"))
+    range_cls = symbol_table.must_find_concrete_class(Identifier("Range"))
+    extension_cls = symbol_table.must_find_concrete_class(Identifier("Extension"))
+    qualifier_cls = symbol_table.must_find_concrete_class(Identifier("Qualifier"))
 
-    data_type_def_xsd_symbol = symbol_table.must_find(Identifier("Data_type_def_XSD"))
-    assert isinstance(data_type_def_xsd_symbol, intermediate.Enumeration)
+    data_type_def_xsd_symbol = symbol_table.must_find_enumeration(
+        Identifier("Data_type_def_XSD")
+    )
 
     for cls in (property_cls, range_cls, extension_cls, qualifier_cls):
-        assert isinstance(cls, intermediate.ConcreteClass)
-
         replication = replication_map[cls.name]
 
         for literal in data_type_def_xsd_symbol.literals:
@@ -2535,21 +2535,21 @@ def generate(
 
     observed_enums = set()  # type: Set[Identifier]
 
-    for symbol in symbol_table.symbols:
-        if not isinstance(symbol, intermediate.ConcreteClass):
+    for our_type in symbol_table.our_types:
+        if not isinstance(our_type, intermediate.ConcreteClass):
             continue
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             type_anno = intermediate.beneath_optional(prop.type_annotation)
 
             if not (
                 isinstance(type_anno, intermediate.OurTypeAnnotation)
-                and isinstance(type_anno.symbol, intermediate.Enumeration)
-                and type_anno.symbol.name not in observed_enums
+                and isinstance(type_anno.our_type, intermediate.Enumeration)
+                and type_anno.our_type.name not in observed_enums
             ):
                 continue
 
-            enums_props_classes.append((type_anno.symbol, prop, symbol))
+            enums_props_classes.append((type_anno.our_type, prop, our_type))
 
     for enum, prop, cls in enums_props_classes:
         replication = replication_map[cls.name]

@@ -79,9 +79,9 @@ def _compute_relationship_map(
         Tuple[Identifier, Identifier], RelationshipUnion
     ] = collections.OrderedDict()
 
-    for symbol in symbol_table.symbols:
-        if isinstance(symbol, intermediate.ConcreteClass):
-            for prop in symbol.properties:
+    for our_type in symbol_table.our_types:
+        if isinstance(our_type, intermediate.ConcreteClass):
+            for prop in our_type.properties:
                 type_anno = intermediate.beneath_optional(prop.type_annotation)
 
                 if isinstance(type_anno, intermediate.ListTypeAnnotation):
@@ -92,21 +92,25 @@ def _compute_relationship_map(
                         f"but got: {type_anno}"
                     )
 
-                    if isinstance(type_anno.items.symbol, intermediate.AbstractClass):
-                        for concrete_cls in type_anno.items.symbol.concrete_descendants:
-                            source_target = (symbol.name, concrete_cls.name)
+                    if isinstance(type_anno.items.our_type, intermediate.AbstractClass):
+                        for (
+                            concrete_cls
+                        ) in type_anno.items.our_type.concrete_descendants:
+                            source_target = (our_type.name, concrete_cls.name)
 
                             rel = rel_map.get(source_target, None)
                             if rel is None:
                                 rel_map[source_target] = ListPropertyRelationship(
                                     property_name=prop.name
                                 )
-                    elif isinstance(type_anno.items.symbol, intermediate.ConcreteClass):
+                    elif isinstance(
+                        type_anno.items.our_type, intermediate.ConcreteClass
+                    ):
                         for concrete_cls in itertools.chain(
-                            [type_anno.items.symbol],
-                            type_anno.items.symbol.concrete_descendants,
+                            [type_anno.items.our_type],
+                            type_anno.items.our_type.concrete_descendants,
                         ):
-                            source_target = (symbol.name, concrete_cls.name)
+                            source_target = (our_type.name, concrete_cls.name)
 
                             rel = rel_map.get(source_target, None)
                             if rel is None:
@@ -117,9 +121,9 @@ def _compute_relationship_map(
                         pass
 
                 elif isinstance(type_anno, intermediate.OurTypeAnnotation):
-                    if isinstance(type_anno.symbol, intermediate.AbstractClass):
-                        for concrete_cls in type_anno.symbol.concrete_descendants:
-                            source_target = (symbol.name, concrete_cls.name)
+                    if isinstance(type_anno.our_type, intermediate.AbstractClass):
+                        for concrete_cls in type_anno.our_type.concrete_descendants:
+                            source_target = (our_type.name, concrete_cls.name)
 
                             rel = rel_map.get(source_target, None)
 
@@ -133,11 +137,12 @@ def _compute_relationship_map(
                                     property_name=prop.name
                                 )
 
-                    elif isinstance(type_anno.symbol, intermediate.ConcreteClass):
+                    elif isinstance(type_anno.our_type, intermediate.ConcreteClass):
                         for concrete_cls in itertools.chain(
-                            [type_anno.symbol], type_anno.symbol.concrete_descendants
+                            [type_anno.our_type],
+                            type_anno.our_type.concrete_descendants,
                         ):
-                            source_target = (symbol.name, concrete_cls.name)
+                            source_target = (our_type.name, concrete_cls.name)
 
                             rel = rel_map.get(source_target, None)
 
@@ -159,9 +164,9 @@ def _compute_shortest_paths_from_environment(
 ) -> ShortestPathMap:
     """Compute the shortest path from the environment to the concrete classes."""
     graph = networkx.DiGraph()
-    for symbol in symbol_table.symbols:
-        if isinstance(symbol, intermediate.ConcreteClass):
-            graph.add_node(symbol.name)
+    for our_type in symbol_table.our_types:
+        if isinstance(our_type, intermediate.ConcreteClass):
+            graph.add_node(our_type.name)
 
     for (source, target), relationship in relationship_map.items():
         if isinstance(relationship, PropertyRelationship):
@@ -180,11 +185,11 @@ def _compute_shortest_paths_from_environment(
 
     path_map[Identifier("Environment")] = []
 
-    for symbol in symbol_table.symbols:
-        if symbol.name == "Environment":
+    for our_type in symbol_table.our_types:
+        if our_type.name == "Environment":
             continue
 
-        raw_path = raw_path_map.get(symbol.name, None)
+        raw_path = raw_path_map.get(our_type.name, None)
         if raw_path is None:
             continue
 
@@ -205,13 +210,13 @@ def _compute_shortest_paths_from_environment(
                 break
 
             assert prev is not None
-            source_symbol = symbol_table.must_find(Identifier(prev))
+            source_symbol = symbol_table.must_find_our_type(Identifier(prev))
             assert isinstance(
                 source_symbol, intermediate.ConcreteClass
             ), "Only edges between concrete classes expected in the graph"
 
             assert current is not None
-            target_symbol = symbol_table.must_find(Identifier(current))
+            target_symbol = symbol_table.must_find_our_type(Identifier(current))
             assert isinstance(
                 target_symbol, intermediate.ConcreteClass
             ), "Only edges between concrete classes expected in the graph"
@@ -225,7 +230,7 @@ def _compute_shortest_paths_from_environment(
                 )
             )
 
-        path_map[symbol.name] = path
+        path_map[our_type.name] = path
 
     return path_map
 
