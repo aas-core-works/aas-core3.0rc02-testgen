@@ -214,8 +214,7 @@ class _Serializer:
         # We need to re-order the sequence so that it strictly follows the order of the
         # properties in the meta-model. Otherwise, the XML schema will complain.
 
-        cls = self.symbol_table.must_find(instance.model_type)
-        assert isinstance(cls, intermediate.ConcreteClass)
+        cls = self.symbol_table.must_find_concrete_class(instance.model_type)
 
         order_map = {prop.name: i for i, prop in enumerate(cls.properties)}
 
@@ -244,10 +243,7 @@ class _Serializer:
             elif isinstance(prop_value, generation.Instance):
                 subsequence = self._serialize_instance(prop_value, doc)
 
-                a_cls = self.symbol_table.must_find(prop_value.model_type)
-                assert isinstance(
-                    a_cls, (intermediate.AbstractClass, intermediate.ConcreteClass)
-                )
+                a_cls = self.symbol_table.must_find_class(prop_value.model_type)
 
                 if (
                     a_cls.serialization is not None
@@ -337,8 +333,7 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
     serializer = _Serializer(symbol_table=symbol_table)
 
-    environment_cls = symbol_table.must_find(Identifier("Environment"))
-    assert isinstance(environment_cls, intermediate.ConcreteClass)
+    environment_cls = symbol_table.must_find_concrete_class(Identifier("Environment"))
 
     for test_case in generation.generate(
         symbol_table=symbol_table,

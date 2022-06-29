@@ -181,8 +181,7 @@ class _Serializer:
                 aas_core_codegen.naming.json_property(Identifier(prop_name))
             ] = self._serialize_value(prop_value)
 
-        cls = self.symbol_table.must_find(instance.model_type)
-        assert isinstance(cls, (intermediate.AbstractClass, intermediate.ConcreteClass))
+        cls = self.symbol_table.must_find_class(instance.model_type)
 
         if cls.serialization is not None and cls.serialization.with_model_type:
             jsonable["modelType"] = aas_core_codegen.naming.json_model_type(
@@ -259,30 +258,29 @@ def _generate_null_violations(
     serializer: _Serializer,
 ) -> None:
     """Generate the files with the properties and items set to ``null``."""
-    environment_cls = symbol_table.must_find(Identifier("Environment"))
-    assert isinstance(environment_cls, intermediate.ConcreteClass)
+    environment_cls = symbol_table.must_find_concrete_class(Identifier("Environment"))
 
-    for symbol in symbol_table.symbols:
-        if not isinstance(symbol, intermediate.ConcreteClass):
+    for our_type in symbol_table.our_types:
+        if not isinstance(our_type, intermediate.ConcreteClass):
             continue
 
-        if symbol.name not in class_graph.shortest_paths:
+        if our_type.name not in class_graph.shortest_paths:
             path_segments = []  # type: List[Union[str, int]]
 
             container = generation.generate_minimal_instance(
-                cls=symbol,
+                cls=our_type,
                 path_segments=path_segments,
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
             )
 
-            container_class = symbol
+            container_class = our_type
         else:
             (
                 container,
                 path_segments,
             ) = generation.generate_minimal_instance_in_minimal_environment(
-                cls=symbol,
+                cls=our_type,
                 class_graph=class_graph,
                 constraints_by_class=constraints_by_class,
                 symbol_table=symbol_table,
@@ -298,7 +296,7 @@ def _generate_null_violations(
             path_to_instance=path_segments,
         )
 
-        for prop in symbol.properties:
+        for prop in our_type.properties:
             type_anno = intermediate.beneath_optional(prop.type_annotation)
 
             if isinstance(prop.type_annotation, intermediate.OptionalTypeAnnotation):
@@ -320,7 +318,7 @@ def _generate_null_violations(
             prop_name_json = aas_core_codegen.naming.json_property(prop.name)
 
             base_pth = test_data_dir / "Json"
-            if container_class is environment_cls and symbol is not environment_cls:
+            if container_class is environment_cls and our_type is not environment_cls:
                 base_pth /= "ContainedInEnvironment"
             else:
                 base_pth /= "SelfContained"
@@ -334,7 +332,7 @@ def _generate_null_violations(
                     base_pth
                     / "Unexpected"
                     / "NullViolation"
-                    / aas_core_codegen.naming.json_model_type(symbol.name)
+                    / aas_core_codegen.naming.json_model_type(our_type.name)
                     / f"{prop_name_json}_value.json"
                 )
 
@@ -350,7 +348,7 @@ def _generate_null_violations(
                     base_pth
                     / "Unexpected"
                     / "NullViolation"
-                    / aas_core_codegen.naming.json_model_type(symbol.name)
+                    / aas_core_codegen.naming.json_model_type(our_type.name)
                     / f"{prop_name_json}_item.json"
                 )
 
@@ -371,8 +369,7 @@ def generate(test_data_dir: pathlib.Path) -> None:
 
     serializer = _Serializer(symbol_table=symbol_table)
 
-    environment_cls = symbol_table.must_find(Identifier("Environment"))
-    assert isinstance(environment_cls, intermediate.ConcreteClass)
+    environment_cls = symbol_table.must_find_concrete_class(Identifier("Environment"))
 
     for test_case in generation.generate(
         symbol_table=symbol_table,
