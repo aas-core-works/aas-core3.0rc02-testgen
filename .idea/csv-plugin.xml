@@ -31,6 +31,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\setup.py">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\test_data\Json\Expected\AnnotatedRelationshipElement\complete.json">
           <value>
             <Attribute>
