@@ -284,6 +284,7 @@ def _generate_primitive_value(
     set_of_primitives_constraint: Optional[infer_for_schema.SetOfPrimitivesConstraint],
 ) -> PrimitiveValueUnion:
     """Generate the primitive value based on the ``path_segments``."""
+
     # noinspection PyUnusedLocal
     def implementation() -> Union[bool, int, float, str, bytearray]:
         """Wrap the body so that we can ensure the len constraints."""
@@ -465,7 +466,9 @@ def _generate_model_reference(
             key1 = Instance(
                 properties=collections.OrderedDict(
                     [
-                        ("type", aas_core_meta.v3rc2.Key_types.Referable.value),
+                        # NOTE (mristin, 2022-07-10):
+                        # Blob is an instance of a referable.
+                        ("type", aas_core_meta.v3rc2.Key_types.Blob.value),
                         ("value", f"something_random_{_hash_path(path_segments)}"),
                     ]
                 ),
@@ -1193,6 +1196,42 @@ def generate_minimal_instance_in_minimal_environment(
 
     Return the environment and the path to the instance.
     """
+    if cls is symbol_table.must_find_concrete_class(Identifier("Reference")):
+        # NOTE (mristin, 2022-07-10):
+        # We manually create the environment for the ``Reference`` class as we want
+        # to avoid any constraints on the target.
+        path_segments = ["submodels", 0, "semantic_id"]  # type: List[Union[str, int]]
+        container = Instance(
+            properties=collections.OrderedDict(
+                [
+                    (
+                        "submodels",
+                        ListOfInstances(
+                            values=[
+                                Instance(
+                                    properties=collections.OrderedDict(
+                                        [
+                                            ("id", "some_submodel"),
+                                            (
+                                                "semantic_id",
+                                                _generate_global_reference(
+                                                    path_segments=path_segments
+                                                ),
+                                            ),
+                                        ]
+                                    ),
+                                    model_type=Identifier("Submodel"),
+                                )
+                            ]
+                        ),
+                    )
+                ]
+            ),
+            model_type=Identifier("Environment"),
+        )
+
+        return container, path_segments
+
     shortest_path_in_class_graph_from_environment = class_graph.shortest_paths[cls.name]
 
     if len(shortest_path_in_class_graph_from_environment) == 0:
@@ -1214,7 +1253,7 @@ def generate_minimal_instance_in_minimal_environment(
 
     environment_instance: Optional[Instance] = None
 
-    path_segments: List[Union[str, int]] = []
+    path_segments = []
     source_instance: Optional[Instance] = None
 
     instance_path = None  # type: Optional[List[Union[int, str]]]
@@ -2171,6 +2210,476 @@ def _generate_additional_cases_for_submodel_element_list(
     # endregion
 
 
+class _ReferenceConstructor:
+    """Help make the construction code of the references a bit more succinct."""
+
+    # fmt: off
+    @require(
+        lambda symbol_table, reference_type:
+        reference_type in (
+                symbol_table
+                .must_find_enumeration(Identifier("Reference_types"))
+                .literals_by_name
+        )
+    )
+    # fmt: on
+    def __init__(
+        self,
+        replicator: ContainerInstanceReplicator,
+        symbol_table: intermediate.SymbolTable,
+        reference_type: str,
+    ) -> None:
+        """Initialize with the given values."""
+        self.replicator = replicator
+        self.symbol_table = symbol_table
+
+        reference_type_literal = symbol_table.must_find_enumeration(
+            Identifier("Reference_types")
+        ).literals_by_name[reference_type]
+
+        self.reference_type = reference_type_literal.value
+
+        # List of (key type, key value)
+        self._chain = []  # type: List[Tuple[str, str]]
+
+        self.key_types_enum = symbol_table.must_find_enumeration(
+            Identifier("Key_types")
+        )
+
+    # fmt: off
+    @require(
+        lambda self, key_type:
+        key_type in self.key_types_enum.literals_by_name
+    )
+    # fmt: on
+    def add_key(self, key_type: str, key_value: str) -> None:
+        """Add the key to reference keys."""
+        literal = self.key_types_enum.literals_by_name[key_type]
+
+        self._chain.append((literal.value, key_value))
+
+    def construct(self) -> Tuple[Instance, Instance, List[Union[int, str]]]:
+        """
+        Construct the reference based on the instructions.
+
+        Return the container, the instance and the path segments to the instance.
+        """
+        container, instance, path_segments = self.replicator.replicate()
+
+        instance.properties["type"] = self.reference_type
+
+        instance.properties["keys"] = ListOfInstances(
+            values=[
+                Instance(
+                    properties=collections.OrderedDict(
+                        [("type", key_type), ("value", key_value)]
+                    ),
+                    model_type=Identifier("Key"),
+                )
+                for key_type, key_value in self._chain
+            ]
+        )
+
+        return container, instance, path_segments
+
+
+def _generate_additional_cases_for_reference(
+    replication_map: Mapping[Identifier, _Replication],
+    constraints_by_class: MutableMapping[
+        intermediate.ClassUnion, infer_for_schema.ConstraintsByProperty
+    ],
+    symbol_table: intermediate.SymbolTable,
+) -> Iterator[CaseUnion]:
+    # NOTE (mristin, 2022-07-10):
+    # Originally, we wrote this function as a long monolith. This was easier to read
+    # on a first pass, but it was very difficult to maintain as small changes forced
+    # us to check long code in too much detail.
+    #
+    # Therefore, we introduced a couple of helper functions which help to keep the focus
+    # of the reader on the important details, instead of the boilerplate. Please bear
+    # with us, dear reader, and make first the mental map of the helper functions first
+    # before you try to understand the body of this function.
+
+    # region Dependencies
+
+    cls = symbol_table.must_find_concrete_class(Identifier("Reference"))
+
+    replication = replication_map[Identifier("Reference")]
+    replicator = replication.minimal
+
+    def new_constructor_of_model_reference() -> _ReferenceConstructor:
+        """
+        Produce a constructor of a model reference.
+
+        This makes the code much shorter and the examples a bit more readable even
+        though it takes the reader a bit longer to understand the code in
+        the first pass.
+        """
+        return _ReferenceConstructor(
+            replicator=replicator,
+            symbol_table=symbol_table,
+            reference_type="Model_reference",
+        )
+
+    def new_constructor_of_global_reference() -> _ReferenceConstructor:
+        """
+        Produce a constructor of a global reference.
+
+        This makes the code much shorter and the examples a bit more readable even
+        though it takes the reader a bit longer to understand the code in
+        the first pass.
+        """
+        return _ReferenceConstructor(
+            replicator=replicator,
+            symbol_table=symbol_table,
+            reference_type="Global_reference",
+        )
+
+    def assert_key_type_in_set(
+        key_type: str,
+        the_set: str,
+    ) -> None:
+        """Assert in a succinct way that the Key type is in a set of Key types."""
+        key_types_enum = symbol_table.must_find_enumeration(Identifier("Key_types"))
+
+        key_types_literal = key_types_enum.literals_by_name.get(
+            Identifier(key_type), None
+        )
+
+        assert key_types_literal is not None, f"{key_type=}"
+
+        constant = symbol_table.constants_by_name.get(Identifier(the_set), None)
+        assert constant is not None, f"{the_set=}"
+        assert isinstance(constant, intermediate.ConstantSetOfEnumerationLiterals)
+
+        assert (
+            id(key_types_literal) in constant.literal_id_set
+        ), f"{key_type=}, {constant=}"
+
+    def assert_key_type_outside_set(
+        key_type: str,
+        the_set: str,
+    ) -> None:
+        """Assert in a succinct way that the Key type is outside a set of Key types."""
+        key_types_enum = symbol_table.must_find_enumeration(Identifier("Key_types"))
+
+        key_types_literal = key_types_enum.literals_by_name.get(
+            Identifier(key_type), None
+        )
+
+        assert key_types_literal is not None, f"{key_type=}"
+
+        constant = symbol_table.constants_by_name.get(Identifier(the_set), None)
+        assert constant is not None, f"{constant=}"
+        assert isinstance(constant, intermediate.ConstantSetOfEnumerationLiterals)
+
+        assert (
+            id(key_types_literal) not in constant.literal_id_set
+        ), f"{key_type=}, {the_set=}"
+
+    # endregion
+
+    # NOTE (mristin, 2022-07-10):
+    # We start with the negative examples first.
+
+    # region First key not in Globally identifiables
+
+    assert_key_type_outside_set(key_type="Blob", the_set="Globally_identifiables")
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Blob", key_value="something")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="first_key_not_in_globally_identifiables",
+    )
+
+    # endregion
+
+    # region For a global references, first key not in Generic globally identifiables
+
+    assert_key_type_outside_set(
+        key_type="Blob", the_set="Generic_globally_identifiables"
+    )
+
+    constructor = new_constructor_of_global_reference()
+
+    constructor.add_key(key_type="Blob", key_value="something")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_global_reference_first_key_not_in_generic_globally_identifiables",
+    )
+
+    # endregion
+
+    # region For a model reference, first key not in AAS identifiables
+
+    assert_key_type_outside_set(
+        key_type="Global_reference", the_set="AAS_identifiables"
+    )
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Global_reference", key_value="something")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_first_key_not_in_AAS_identifiables",
+    )
+
+    # endregion
+
+    # region For a global reference invalid last key
+
+    assert_key_type_outside_set(
+        key_type="Blob", the_set="Generic_globally_identifiables"
+    )
+
+    assert_key_type_outside_set(key_type="Blob", the_set="Generic_fragment_keys")
+
+    constructor = new_constructor_of_global_reference()
+
+    constructor.add_key(key_type="Global_reference", key_value="something")
+    constructor.add_key(key_type="Blob", key_value="something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_global_reference_invalid_last_key",
+    )
+
+    # endregion
+
+    # region For a model reference second key not in fragment keys
+
+    assert_key_type_outside_set(key_type="Global_reference", the_set="Fragment_keys")
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Global_reference", key_value="something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_second_key_not_in_fragment_keys",
+    )
+
+    # endregion
+
+    # region For a model reference generic fragment key in the middle
+
+    assert_key_type_in_set(
+        key_type="Fragment_reference", the_set="Generic_fragment_keys"
+    )
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Fragment_reference", key_value="something_more")
+    constructor.add_key(key_type="Property", key_value="yet_something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_fragment_reference_in_the_middle",
+    )
+
+    # endregion
+
+    # region For a model reference fragment reference not after file or blob
+
+    assert_key_type_in_set(
+        key_type="Fragment_reference", the_set="Generic_fragment_keys"
+    )
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Property", key_value="something_more")
+    constructor.add_key(key_type="Fragment_reference", key_value="yet_something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_fragment_reference_not_after_file_or_blob",
+    )
+
+    # endregion
+
+    # region For a model reference, invalid key value after submodel element list
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Submodel_element_list", key_value="something_more")
+    constructor.add_key(key_type="Property", key_value="-1")
+
+    container, _, _ = constructor.construct()
+
+    yield CaseConstraintViolation(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_invalid_key_value_after_submodel_element_list",
+    )
+
+    # endregion
+
+    # NOTE (mristin, 2022-07-10):
+    # Now we generate the positive examples.
+
+    # region For a global references, first key in Generic globally identifiables
+
+    assert_key_type_in_set(
+        key_type="Global_reference", the_set="Globally_identifiables"
+    )
+
+    constructor = new_constructor_of_global_reference()
+
+    constructor.add_key(key_type="Global_reference", key_value="something")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_global_reference_first_key_in_generic_globally_identifiables",
+    )
+
+    # endregion
+
+    # region For a model references, first key in globally and AAS identifiables
+
+    assert_key_type_in_set(key_type="Submodel", the_set="Globally_identifiables")
+
+    assert_key_type_in_set(key_type="Submodel", the_set="AAS_identifiables")
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_first_key_in_globally_and_aas_identifiables",
+    )
+
+    # endregion
+
+    # region For a global references, last key in generic globally identifiable
+
+    assert_key_type_in_set(
+        key_type="Global_reference", the_set="Generic_globally_identifiables"
+    )
+
+    constructor = new_constructor_of_global_reference()
+
+    constructor.add_key(key_type="Global_reference", key_value="something")
+    constructor.add_key(key_type="Global_reference", key_value="something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_global_reference_last_key_in_generic_globally_identifiable",
+    )
+
+    # endregion
+
+    # region For a global references, last key in generic fragment keys
+
+    assert_key_type_in_set(
+        key_type="Fragment_reference", the_set="Generic_fragment_keys"
+    )
+
+    constructor = new_constructor_of_global_reference()
+
+    constructor.add_key(key_type="Global_reference", key_value="something")
+    constructor.add_key(key_type="Fragment_reference", key_value="something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_global_reference_last_key_in_generic_fragment_keys",
+    )
+
+    # endregion
+
+    # region For a model references, fragment after blob
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Blob", key_value="something_more")
+    constructor.add_key(key_type="Fragment_reference", key_value="yet_something_more")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_fragment_after_blob",
+    )
+
+    # endregion
+
+    # region For a model reference, positive key value after submodel element list
+
+    constructor = new_constructor_of_model_reference()
+
+    constructor.add_key(key_type="Submodel", key_value="something")
+    constructor.add_key(key_type="Submodel_element_list", key_value="something_more")
+    constructor.add_key(key_type="Property", key_value="123")
+
+    container, _, _ = constructor.construct()
+
+    yield CasePositiveManual(
+        container_class=replicator.container_class,
+        container=container,
+        cls=cls,
+        name="for_a_model_reference_valid_key_value_after_submodel_element_list",
+    )
+
+    # endregion
+
+
 def _compute_replication_map(
     symbol_table: intermediate.SymbolTable,
     constraints_by_class: MutableMapping[
@@ -2751,6 +3260,12 @@ def generate(
     # endregion
 
     yield from _generate_additional_cases_for_submodel_element_list(
+        replication_map=replication_map,
+        constraints_by_class=constraints_by_class,
+        symbol_table=symbol_table,
+    )
+
+    yield from _generate_additional_cases_for_reference(
         replication_map=replication_map,
         constraints_by_class=constraints_by_class,
         symbol_table=symbol_table,
