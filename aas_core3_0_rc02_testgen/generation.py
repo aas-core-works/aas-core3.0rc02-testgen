@@ -268,40 +268,38 @@ def _generate_time_of_day(path_segments: List[Union[int, str]]) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{fraction}"
 
 
+# fmt: off
 @require(
-    lambda type_annotation: (
-        type_anno := intermediate.beneath_optional(type_annotation),
-        isinstance(type_anno, intermediate.PrimitiveTypeAnnotation)
-        or (
-            isinstance(type_anno, intermediate.OurTypeAnnotation)
-            and isinstance(type_anno.our_type, intermediate.ConstrainedPrimitive)
-        ),
-    )[1]
+    lambda primitive_type, set_of_primitives_constraint:
+    not (set_of_primitives_constraint is not None)
+    or primitive_type is set_of_primitives_constraint.a_type,
+    "If there is a set of primitives constraint, the type annotation must match it"
 )
+# fmt: on
 def _generate_primitive_value(
-    type_annotation: intermediate.TypeAnnotationExceptOptional,
+    primitive_type: intermediate.PrimitiveType,
     path_segments: List[Union[str, int]],
     len_constraint: Optional[infer_for_schema.LenConstraint],
     pattern_constraints: Optional[Sequence[infer_for_schema.PatternConstraint]],
+    set_of_primitives_constraint: Optional[infer_for_schema.SetOfPrimitivesConstraint],
 ) -> PrimitiveValueUnion:
     """Generate the primitive value based on the ``path_segments``."""
     # noinspection PyUnusedLocal
-    primitive_type = None  # type: Optional[intermediate.PrimitiveType]
-
-    if isinstance(type_annotation, intermediate.PrimitiveTypeAnnotation):
-        primitive_type = type_annotation.a_type
-    elif isinstance(type_annotation, intermediate.OurTypeAnnotation) and isinstance(
-        type_annotation.our_type, intermediate.ConstrainedPrimitive
-    ):
-        primitive_type = type_annotation.our_type.constrainee
-    else:
-        raise AssertionError(f"Unexpected {type(type_annotation)}: {type_annotation=}")
-
-    assert primitive_type is not None
-
     def implementation() -> Union[bool, int, float, str, bytearray]:
         """Wrap the body so that we can ensure the len constraints."""
         hsh = _hash_path(path_segments=path_segments)
+        hsh_as_int = int(hsh, base=16)
+
+        # region Pick an item of a set constraint if constrained
+
+        if set_of_primitives_constraint is not None:
+            literal = set_of_primitives_constraint.literals[
+                hsh_as_int % len(set_of_primitives_constraint.literals)
+            ]
+
+            return literal.value
+
+        # endregion
 
         # region Handle the special case of a single pattern constraint first
 
@@ -352,8 +350,6 @@ def _generate_primitive_value(
             raise AssertionError("Expected to check for at least one positive example")
 
         # endregion
-
-        hsh_as_int = int(hsh, base=16)
 
         assert primitive_type is not None
         if primitive_type is intermediate.PrimitiveType.BOOL:
@@ -510,11 +506,30 @@ def _generate_global_reference(
     return Instance(properties=props, model_type=Identifier("Reference"))
 
 
+# fmt: off
+@require(
+    lambda type_annotation, set_of_enumeration_literals_constraint:
+    not (set_of_enumeration_literals_constraint is not None)
+    or (
+        isinstance(type_annotation, intermediate.OurTypeAnnotation)
+        and (
+            type_annotation.our_type is
+            set_of_enumeration_literals_constraint.enumeration
+        )
+    ),
+    "If set of enumeration literals constraint is defined, the type annotation must "
+    "refer to the enumeration"
+)
+# fmt: on
 def _generate_property_value(
     type_annotation: intermediate.TypeAnnotationExceptOptional,
     path_segments: List[Union[str, int]],
     len_constraint: Optional[infer_for_schema.LenConstraint],
     pattern_constraints: Optional[Sequence[infer_for_schema.PatternConstraint]],
+    set_of_primitives_constraint: Optional[infer_for_schema.SetOfPrimitivesConstraint],
+    set_of_enumeration_literals_constraint: Optional[
+        infer_for_schema.SetOfEnumerationLiteralsConstraint
+    ],
     generate_instance: Callable[
         [intermediate.ClassUnion, List[Union[str, int]]], Instance
     ],
@@ -527,17 +542,20 @@ def _generate_property_value(
     The callable ``generate_instance`` instructs how to generate the instances
     recursively.
     """
-    if isinstance(type_annotation, intermediate.PrimitiveTypeAnnotation) or (
-        isinstance(type_annotation, intermediate.OurTypeAnnotation)
-        and isinstance(type_annotation.our_type, intermediate.ConstrainedPrimitive)
-    ):
+    maybe_primitive_type = intermediate.try_primitive_type(type_annotation)
+
+    if maybe_primitive_type is not None:
         return _generate_primitive_value(
-            type_annotation=type_annotation,
+            primitive_type=maybe_primitive_type,
             path_segments=path_segments,
             len_constraint=len_constraint,
             pattern_constraints=pattern_constraints,
+            set_of_primitives_constraint=set_of_primitives_constraint,
         )
-    elif isinstance(type_annotation, intermediate.OurTypeAnnotation):
+
+    assert not isinstance(type_annotation, intermediate.PrimitiveTypeAnnotation)
+
+    if isinstance(type_annotation, intermediate.OurTypeAnnotation):
         if pattern_constraints is not None:
             raise ValueError(
                 f"Unexpected pattern constraints for a value "
@@ -553,11 +571,21 @@ def _generate_property_value(
         if isinstance(type_annotation.our_type, intermediate.Enumeration):
             hsh_as_int = int(_hash_path(path_segments=path_segments), base=16)
 
-            text = type_annotation.our_type.literals[
+            if set_of_enumeration_literals_constraint is not None:
+                assert len(set_of_enumeration_literals_constraint.literals) > 0, (
+                    "Expected at least one literal in the set of enumeration literals "
+                    "constraint, but got none"
+                )
+
+                enum_literal = set_of_enumeration_literals_constraint.literals[
+                    hsh_as_int % len(set_of_enumeration_literals_constraint.literals)
+                ]
+
+                return enum_literal.value
+
+            return type_annotation.our_type.literals[
                 hsh_as_int % len(type_annotation.our_type.literals)
             ].value
-
-            return text
 
         elif isinstance(type_annotation.our_type, intermediate.ConstrainedPrimitive):
             raise AssertionError(
@@ -664,6 +692,7 @@ def _generate_concrete_minimal_instance(
             continue
 
         with _extend_in_place(path_segments, [prop.name]):
+            # fmt: off
             props[prop.name] = _generate_property_value(
                 type_annotation=prop.type_annotation,
                 path_segments=path_segments,
@@ -673,8 +702,23 @@ def _generate_concrete_minimal_instance(
                 pattern_constraints=constraints_by_prop.patterns_by_property.get(
                     prop, None
                 ),
+                set_of_primitives_constraint=(
+                    constraints_by_prop
+                    .set_of_primitives_by_property
+                    .get(
+                        prop, None
+                    )
+                ),
+                set_of_enumeration_literals_constraint=(
+                    constraints_by_prop
+                    .set_of_enumeration_literals_by_property
+                    .get(
+                        prop, None
+                    )
+                ),
                 generate_instance=generate_instance,
             )
+            # fmt: on
 
     return Instance(properties=props, model_type=cls.name)
 
@@ -743,7 +787,6 @@ class Handyman:
         self._dispatch_concrete = {
             "Asset_administration_shell": Handyman._fix_asset_administration_shell,
             "Basic_event_element": Handyman._fix_basic_event_element,
-            "Concept_description": Handyman._fix_concept_description,
             "Entity": Handyman._fix_entity,
             "Event_payload": Handyman._fix_event_payload,
             "Extension": Handyman._fix_extension,
@@ -786,27 +829,6 @@ class Handyman:
         self, instance: Instance, path_segments: List[Union[str, int]]
     ) -> None:
         """Fix the ``instance`` recursively in-place."""
-        cls = self.symbol_table.must_find_concrete_class(name=instance.model_type)
-
-        # region Fix for the ancestor classes
-
-        data_element_cls = self.symbol_table.must_find_abstract_class(
-            Identifier("Data_element")
-        )
-
-        if cls.is_subclass_of(data_element_cls):
-            category_value = instance.properties.get("category", None)
-            if category_value is not None and category_value not in (
-                "CONSTANT",
-                "PARAMETER",
-                "VARIABLE",
-            ):
-                instance.properties["category"] = "CONSTANT"
-
-        # endregion
-
-        # region Fix for the concrete class
-
         dispatch = self._dispatch_concrete.get(instance.model_type, None)
         if dispatch is not None:
             # noinspection PyArgumentList
@@ -901,14 +923,6 @@ class Handyman:
                         )
                     ]
                 )
-
-        self._recurse_into_properties(instance=instance, path_segments=path_segments)
-
-    def _fix_concept_description(
-        self, instance: Instance, path_segments: List[Union[str, int]]
-    ) -> None:
-        if "category" in instance.properties:
-            instance.properties["category"] = "VALUE"
 
         self._recurse_into_properties(instance=instance, path_segments=path_segments)
 
@@ -1292,6 +1306,7 @@ def make_minimal_instance_complete(
             type_anno = intermediate.beneath_optional(prop.type_annotation)
 
             with _extend_in_place(path_segments, [prop.name]):
+                # fmt: off
                 instance.properties[prop.name] = _generate_property_value(
                     type_annotation=type_anno,
                     path_segments=path_segments,
@@ -1300,6 +1315,20 @@ def make_minimal_instance_complete(
                     ),
                     pattern_constraints=constraints_by_prop.patterns_by_property.get(
                         prop, None
+                    ),
+                    set_of_primitives_constraint=(
+                        constraints_by_prop
+                        .set_of_primitives_by_property
+                        .get(
+                            prop, None
+                        )
+                    ),
+                    set_of_enumeration_literals_constraint=(
+                        constraints_by_prop
+                        .set_of_enumeration_literals_by_property
+                        .get(
+                            prop, None
+                        )
                     ),
                     generate_instance=(
                         lambda a_cls, a_path_segments: generate_minimal_instance(
@@ -1310,6 +1339,7 @@ def make_minimal_instance_complete(
                         )
                     ),
                 )
+                # fmt: on
 
 
 class ContainerInstanceReplicator:
@@ -1656,7 +1686,7 @@ class CaseInvalidMinMaxExample(Case):
 class CaseEnumViolation(Case):
     """Represent a test case with a min/max XSD values set to a negative example."""
 
-    # fmt: on
+    # fmt: off
     @require(
         lambda enum, prop: (
             type_anno := intermediate.beneath_optional(prop.type_annotation),
@@ -1669,19 +1699,23 @@ class CaseEnumViolation(Case):
         lambda cls, prop: id(prop) in cls.property_id_set,
         "Property belongs to the class",
     )
-    # fmt: off
+    # fmt: on
     def __init__(
-            self,
-            container_class: intermediate.ConcreteClass,
-            container: Instance,
-            enum: intermediate.Enumeration,
-            cls: intermediate.ConcreteClass,
-            prop: intermediate.Property
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        enum: intermediate.Enumeration,
+        cls: intermediate.ConcreteClass,
+        prop: intermediate.Property,
     ) -> None:
         """Initialize with the given values."""
         Case.__init__(
-            self, container_class=container_class, container=container, expected=False,
-            cls=cls)
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
         self.enum = enum
         self.prop = prop
 
@@ -1705,6 +1739,27 @@ class CasePositiveManual(Case):
             cls=cls,
         )
         self.name = name
+
+
+class CaseSetViolation(Case):
+    """Represent a case where a property is outside a constrained set."""
+
+    def __init__(
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+        property_name: Identifier,
+    ) -> None:
+        """Initialize with the given values."""
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
+        self.property_name = property_name
 
 
 class CaseConstraintViolation(Case):
@@ -1744,6 +1799,7 @@ CaseUnion = Union[
     CaseInvalidMinMaxExample,
     CaseEnumViolation,
     CasePositiveManual,
+    CaseSetViolation,
     CaseConstraintViolation,
 ]
 
@@ -2198,6 +2254,61 @@ def _compute_replication_map(
     return replication_map
 
 
+def _outside_set_of_primitives(
+    constraint: infer_for_schema.SetOfPrimitivesConstraint,
+) -> Union[bool, int, float, str, bytearray]:
+    """Generate the value outside the constant set of primitive values."""
+    if constraint.a_type in (
+        intermediate.PrimitiveType.BOOL,
+        intermediate.PrimitiveType.INT,
+        intermediate.PrimitiveType.FLOAT,
+        intermediate.PrimitiveType.BYTEARRAY,
+    ):
+        raise NotImplementedError(
+            "We haven't implemented the generation of non-strings "
+            "outside a set of primitives. Please contact the developers"
+        )
+
+    assert constraint.a_type is intermediate.PrimitiveType.STR
+
+    value_set = set()  # type: Set[str]
+    for literal in constraint.literals:
+        assert isinstance(literal.value, str)
+        value_set.add(literal.value)
+
+    value = "unexpected value"
+    while value in value_set:
+        value = f"really {value}"
+
+    return value
+
+
+@require(
+    lambda constraint: len(constraint.enumeration.literals) > len(constraint.literals),
+    "At least one literal left outside",
+)
+def _outside_set_of_enumeration_literals(
+    constraint: infer_for_schema.SetOfEnumerationLiteralsConstraint,
+) -> str:
+    """Generate a literal value for the enumeration outside the set of literals."""
+    literal_id_set = set()  # type: Set[int]
+
+    for literal in constraint.literals:
+        literal_id_set.add(id(literal))
+
+    # NOTE (mristin, 2022-07-10):
+    # We pick the first to make the generation deterministic.
+
+    for literal in constraint.enumeration.literals:
+        if id(literal) not in literal_id_set:
+            return literal.value
+
+    raise AssertionError(
+        f"No literals of the enumeration {constraint.enumeration.name!r} "
+        f"are outside of the constraint"
+    )
+
+
 def generate(
     symbol_table: intermediate.SymbolTable,
     constraints_by_class: MutableMapping[
@@ -2421,6 +2532,69 @@ def generate(
                     instance.properties[prop.name] = f"2022-02-29T{time_of_day}Z"
 
                     yield CaseDateTimeStampUtcViolationOnFebruary29th(
+                        container_class=replicator.container_class,
+                        container=container,
+                        cls=our_type,
+                        property_name=prop.name,
+                    )
+
+        # endregion
+
+        # region Break property outside a constrained constant set of primitives
+
+        for prop in our_type.properties:
+            # fmt: off
+            set_of_primitives_constraint = (
+                constraints_by_prop
+                .set_of_primitives_by_property
+                .get(prop, None)
+            )
+            # fmt: on
+
+            if set_of_primitives_constraint is not None:
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
+
+                with _extend_in_place(path_segments, [prop.name]):
+                    instance.properties[prop.name] = _outside_set_of_primitives(
+                        constraint=set_of_primitives_constraint
+                    )
+
+                    yield CaseSetViolation(
+                        container_class=replicator.container_class,
+                        container=container,
+                        cls=our_type,
+                        property_name=prop.name,
+                    )
+
+        # endregion
+
+        # region Break property outside a constrained constant set of enum literals
+
+        for prop in our_type.properties:
+            # fmt: off
+            set_of_enum_literals_constraint = (
+                constraints_by_prop
+                .set_of_enumeration_literals_by_property
+                .get(prop, None)
+            )
+            # fmt: on
+
+            if set_of_enum_literals_constraint is not None and (
+                len(set_of_enum_literals_constraint.enumeration.literals)
+                > len(set_of_enum_literals_constraint.literals)
+            ):
+                replicator = replication.minimal
+                container, instance, path_segments = replicator.replicate()
+
+                with _extend_in_place(path_segments, [prop.name]):
+                    instance.properties[
+                        prop.name
+                    ] = _outside_set_of_enumeration_literals(
+                        constraint=set_of_enum_literals_constraint
+                    )
+
+                    yield CaseSetViolation(
                         container_class=replicator.container_class,
                         container=container,
                         cls=our_type,
