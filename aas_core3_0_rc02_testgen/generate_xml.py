@@ -133,6 +133,11 @@ def _relative_path(
     elif isinstance(test_case, generation.CasePositiveManual):
         return base_pth / f"{test_case.name}.xml"
 
+    elif isinstance(test_case, generation.CaseSetViolation):
+        prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
+
+        return base_pth / f"{prop_name}.xml"
+
     elif isinstance(test_case, generation.CaseConstraintViolation):
         return base_pth / f"{test_case.name}.xml"
 
