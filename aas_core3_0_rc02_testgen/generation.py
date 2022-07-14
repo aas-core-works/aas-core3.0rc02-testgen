@@ -755,6 +755,13 @@ def generate_minimal_instance(
         hsh_as_int = int(_hash_path(path_segments=path_segments), base=16)
 
         concrete_classes = cls.interface.implementers
+
+        if len(concrete_classes) == 0:
+            raise AssertionError(
+                f"Unexpected a class with an interface, "
+                f"but no implementers: {cls.name}"
+            )
+
         concrete_cls = concrete_classes[hsh_as_int % len(concrete_classes)]
     else:
         assert isinstance(cls, intermediate.ConcreteClass)
