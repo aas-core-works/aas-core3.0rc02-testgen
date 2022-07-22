@@ -199,13 +199,6 @@
           </xs:sequence>
         </xs:complexType>
       </xs:element>
-      <xs:element name="dataSpecifications" minOccurs="0">
-        <xs:complexType>
-          <xs:sequence>
-            <xs:element name="dataSpecification" type="dataSpecification_t" minOccurs="0" maxOccurs="unbounded"/>
-          </xs:sequence>
-        </xs:complexType>
-      </xs:element>
     </xs:sequence>
   </xs:group>
   <xs:group name="eventElement">
@@ -847,6 +840,7 @@
       <xs:enumeration value="Blob"/>
       <xs:enumeration value="Capability"/>
       <xs:enumeration value="ConceptDescription"/>
+      <xs:enumeration value="Identifiable"/>
       <xs:enumeration value="DataElement"/>
       <xs:enumeration value="Entity"/>
       <xs:enumeration value="EventElement"/>
@@ -855,8 +849,8 @@
       <xs:enumeration value="Operation"/>
       <xs:enumeration value="Property"/>
       <xs:enumeration value="Range"/>
-      <xs:enumeration value="Referable"/>
       <xs:enumeration value="ReferenceElement"/>
+      <xs:enumeration value="Referable"/>
       <xs:enumeration value="RelationshipElement"/>
       <xs:enumeration value="Submodel"/>
       <xs:enumeration value="SubmodelElement"/>
