@@ -128,6 +128,9 @@ def _relative_path(
             / f"{test_case.example_name}.json"
         )
 
+    elif isinstance(test_case, generation.CaseUnexpectedAdditionalProperty):
+        return base_pth / "invalid.json"
+
     elif isinstance(test_case, generation.CaseEnumViolation):
         enum_name = aas_core_codegen.naming.json_model_type(test_case.enum.name)
         prop_name = aas_core_codegen.naming.json_property(test_case.prop.name)

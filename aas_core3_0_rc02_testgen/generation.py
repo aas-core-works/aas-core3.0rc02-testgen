@@ -1616,6 +1616,25 @@ class CaseMaxLengthViolation(Case):
         self.property_name = property_name
 
 
+class CaseUnexpectedAdditionalProperty(Case):
+    """Represent a test case where there is an unexpected property in the instance."""
+
+    def __init__(
+        self,
+        container_class: intermediate.ConcreteClass,
+        container: Instance,
+        cls: intermediate.ConcreteClass,
+    ) -> None:
+        """Initialize with the given values."""
+        Case.__init__(
+            self,
+            container_class=container_class,
+            container=container,
+            expected=False,
+            cls=cls,
+        )
+
+
 class CaseDateTimeStampUtcViolationOnFebruary29th(Case):
     """Represent a test case where we supply an invalid UTC date time stamp."""
 
@@ -1838,6 +1857,7 @@ CaseUnion = Union[
     CaseRequiredViolation,
     CaseMinLengthViolation,
     CaseMaxLengthViolation,
+    CaseUnexpectedAdditionalProperty,
     CaseDateTimeStampUtcViolationOnFebruary29th,
     CasePositiveValueExample,
     CaseInvalidValueExample,
@@ -3024,6 +3044,25 @@ def generate(
                     cls=our_type,
                     property_name=prop.name,
                 )
+
+        # endregion
+
+        # region Add unexpected additional property
+
+        replicator = replication.minimal
+        container, instance, path_segments = replicator.replicate()
+
+        additional_prop_name = "unexpected_additional_property"
+        while additional_prop_name in our_type.properties_by_name:
+            additional_prop_name = f"really_{additional_prop_name}"
+
+        instance.properties[additional_prop_name] = "INVALID"
+
+        yield CaseUnexpectedAdditionalProperty(
+            container_class=replicator.container_class,
+            container=container,
+            cls=our_type,
+        )
 
         # endregion
 
