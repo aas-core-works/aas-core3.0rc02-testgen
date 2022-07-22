@@ -89,6 +89,9 @@ def _relative_path(
 
         return base_pth / f"{prop_name}.xml"
 
+    elif isinstance(test_case, generation.CaseUnexpectedAdditionalProperty):
+        return base_pth / "invalid.xml"
+
     elif isinstance(test_case, generation.CaseDateTimeStampUtcViolationOnFebruary29th):
         prop_name = aas_core_codegen.naming.xml_property(test_case.property_name)
 
