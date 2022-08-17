@@ -40,6 +40,8 @@ def load_symbol_table_and_infer_constraints_for_schema() -> Tuple[
                 f"Failed to parse the meta-model {model_path}: " f"{parse_exception}\n"
             )
 
+    assert atok is not None
+
     import_errors = aas_core_codegen.parse.check_expected_imports(atok=atok)
     if import_errors:
         writer = io.StringIO()
