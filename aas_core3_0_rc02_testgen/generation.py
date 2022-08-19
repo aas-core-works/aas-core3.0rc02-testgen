@@ -268,6 +268,34 @@ def _generate_time_of_day(path_segments: List[Union[int, str]]) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{fraction}"
 
 
+def _extend_lang_string_set_to_have_an_entry_at_least_in_English(
+    lang_string_set: ListOfInstances, path_segments: List[Union[int, str]]
+) -> None:
+    """Extend the LangStringSet to contain at least one entry in English."""
+    hsh = _hash_path(path_segments=path_segments)
+
+    has_english = False
+    for lang_string in lang_string_set.values:
+        language = lang_string.properties["language"]
+        assert isinstance(language, str)
+        if language == "en" or language.startswith("en-"):
+            has_english = True
+            break
+
+    if not has_english:
+        lang_string_set.values.append(
+            Instance(
+                collections.OrderedDict(
+                    [
+                        ("language", "en-UK"),
+                        ("text", f"Something random in English {hsh}"),
+                    ]
+                ),
+                model_type=aas_core_codegen.common.Identifier("Lang_string"),
+            )
+        )
+
+
 # fmt: off
 @require(
     lambda primitive_type, set_of_primitives_constraint:
@@ -797,6 +825,8 @@ class Handyman:
         self._dispatch_concrete = {
             "Asset_administration_shell": Handyman._fix_asset_administration_shell,
             "Basic_event_element": Handyman._fix_basic_event_element,
+            "Concept_description": Handyman._fix_concept_description,
+            "Data_specification_IEC_61360": Handyman._fix_data_specification_iec_61360,
             "Entity": Handyman._fix_entity,
             "Event_payload": Handyman._fix_event_payload,
             "Extension": Handyman._fix_extension,
@@ -933,6 +963,102 @@ class Handyman:
                         )
                     ]
                 )
+
+        self._recurse_into_properties(instance=instance, path_segments=path_segments)
+
+    def _fix_concept_description(
+        self, instance: Instance, path_segments: List[Union[str, int]]
+    ) -> None:
+        category = instance.properties.get("category", None)
+        embedded_data_specifications = instance.properties.get(
+            "embedded_data_specifications", None
+        )
+
+        if embedded_data_specifications is not None:
+            assert isinstance(embedded_data_specifications, ListOfInstances)
+
+            for i, embedded_data_specification in enumerate(
+                embedded_data_specifications.values
+            ):
+                content = embedded_data_specification.properties[
+                    "data_specification_content"
+                ]
+                assert isinstance(content, Instance)
+
+                if content.model_type == "Data_specification_IEC_61360":
+                    with _extend_in_place(
+                        path_segments, ["embedded_data_specifications", i]
+                    ):
+                        if category != "VALUE":
+                            # Fix AASc-003: If not category "VALUE",
+                            # the definition at least in English
+                            if "definition" not in content.properties:
+                                content.properties["definition"] = ListOfInstances([])
+
+                            with _extend_in_place(path_segments, ["definition"]):
+                                assert isinstance(
+                                    content.properties["definition"], ListOfInstances
+                                )
+
+                                _extend_lang_string_set_to_have_an_entry_at_least_in_English(
+                                    lang_string_set=content.properties["definition"],
+                                    path_segments=path_segments,
+                                )
+
+        self._recurse_into_properties(instance=instance, path_segments=path_segments)
+
+    def _fix_data_specification_iec_61360(
+        self, instance: Instance, path_segments: List[Union[str, int]]
+    ) -> None:
+        # If value and value_list, pick value
+        if "value" in instance.properties and "value_list" in instance.properties:
+            del instance.properties["value_list"]
+
+        if (
+            "value" not in instance.properties
+            and "value_list" not in instance.properties
+        ):
+            with _extend_in_place(path_segments, ["value"]):
+                hsh = _hash_path(path_segments=path_segments)
+                instance.properties["value"] = f"something_random_{hsh}"
+
+        # Set dummy unit and unit ID if the data type requires it
+        data_type = instance.properties.get("data_type", None)
+        if data_type is not None:
+            iec_61360_data_types_with_unit_enum = self.symbol_table.constants_by_name[
+                Identifier("IEC_61360_data_types_with_unit")
+            ]
+
+            assert isinstance(
+                iec_61360_data_types_with_unit_enum,
+                intermediate.ConstantSetOfEnumerationLiterals,
+            )
+
+            if any(
+                data_type == literal.value
+                for literal in iec_61360_data_types_with_unit_enum.literals
+            ):
+                if "unit" not in instance.properties:
+                    with _extend_in_place(path_segments, ["unit"]):
+                        hsh = _hash_path(path_segments=path_segments)
+                        instance.properties["unit"] = f"something_random_{hsh}"
+
+                if "unit_id" not in instance.properties:
+                    with _extend_in_place(path_segments, ["unit_id"]):
+                        hsh = _hash_path(path_segments=path_segments)
+                        instance.properties["unit_id"] = f"something_random_{hsh}"
+
+        # If no English in the preferred_name, add an entry
+        preferred_name = instance.properties["preferred_name"]
+        assert isinstance(preferred_name, ListOfInstances)
+
+        with _extend_in_place(path_segments, ["preferred_name"]):
+            assert isinstance(instance.properties["preferred_name"], ListOfInstances)
+
+            _extend_lang_string_set_to_have_an_entry_at_least_in_English(
+                lang_string_set=instance.properties["preferred_name"],
+                path_segments=path_segments,
+            )
 
         self._recurse_into_properties(instance=instance, path_segments=path_segments)
 
