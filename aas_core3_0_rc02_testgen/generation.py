@@ -1896,7 +1896,7 @@ def _make_instance_violate_min_len_constraint(
     type_anno = intermediate.beneath_optional(prop.type_annotation)
 
     # NOTE (mristin, 2022-06-20):
-    # Please consider that the ``min_value`` > 0 in the pre-conditions.
+    # Please consider that the ``min_value > 0`` is in the pre-conditions.
 
     if isinstance(type_anno, intermediate.PrimitiveTypeAnnotation):
         if type_anno.a_type is intermediate.PrimitiveType.STR:
