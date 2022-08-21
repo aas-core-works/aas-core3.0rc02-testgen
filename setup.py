@@ -46,8 +46,8 @@ setup(
             "pydocstyle>=2.1.1<3",
             "coverage>=6,<7",
             "twine",
-            "aas-core-meta@git+https://github.com/aas-core-works/aas-core-meta@95e7dbf#egg=aas-core-meta",
-            "aas-core-codegen@git+https://github.com/aas-core-works/aas-core-codegen@dac0ca1#egg=aas-core-codegen",
+            "aas-core-meta@git+https://github.com/aas-core-works/aas-core-meta@cccea93#egg=aas-core-meta",
+            "aas-core-codegen@git+https://github.com/aas-core-works/aas-core-codegen@163a890#egg=aas-core-codegen",
             "hypothesis==6.46.3",
             "xmlschema==1.10.0",
         ]
