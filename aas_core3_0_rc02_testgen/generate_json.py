@@ -84,7 +84,7 @@ def _relative_path(
         return base_pth / f"{prop_name}.json"
 
     elif isinstance(test_case, generation.CaseMinLengthViolation):
-        prop_name = aas_core_codegen.naming.json_property(test_case.property_name)
+        prop_name = aas_core_codegen.naming.json_property(test_case.prop.name)
 
         return base_pth / f"{prop_name}.json"
 
