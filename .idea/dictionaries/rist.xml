@@ -6,6 +6,7 @@
       <w>columner</w>
       <w>dereferencing</w>
       <w>lineno</w>
+      <w>stmts</w>
       <w>submodelsinvariant</w>
       <w>testgen</w>
       <w>unreachables</w>

@@ -385,7 +385,10 @@ def _generate_primitive_value(
             return hsh_as_int % 2 == 0
 
         elif primitive_type is intermediate.PrimitiveType.INT:
-            return hsh_as_int
+            # NOTE (mristin, 2022-09-01):
+            # We make sure that the integer is not above 2^64 so that we can
+            # safely represent it as a 64-bit long integer.
+            return hsh_as_int % (2**63 - 1)
 
         elif primitive_type is intermediate.PrimitiveType.FLOAT:
             return float(hsh_as_int) / 100
@@ -1703,12 +1706,14 @@ class CaseRequiredViolation(Case):
 class CaseMinLengthViolation(Case):
     """Represent a test case where a min. len constraint is violated."""
 
+    @require(lambda cls, prop: id(prop) in cls.property_id_set)
     def __init__(
         self,
         container_class: intermediate.ConcreteClass,
         container: Instance,
         cls: intermediate.ConcreteClass,
-        property_name: Identifier,
+        prop: intermediate.Property,
+        min_value: int,
     ) -> None:
         """Initialize with the given values."""
         Case.__init__(
@@ -1718,7 +1723,8 @@ class CaseMinLengthViolation(Case):
             expected=False,
             cls=cls,
         )
-        self.property_name = property_name
+        self.prop = prop
+        self.min_value = min_value
 
 
 class CaseMaxLengthViolation(Case):
@@ -3150,7 +3156,8 @@ def generate(
                     container_class=replicator.container_class,
                     container=container,
                     cls=our_type,
-                    property_name=prop.name,
+                    prop=prop,
+                    min_value=len_constraint.min_value,
                 )
 
             if len_constraint.max_value is not None:
