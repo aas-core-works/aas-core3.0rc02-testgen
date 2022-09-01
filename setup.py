@@ -47,7 +47,7 @@ setup(
             "coverage>=6,<7",
             "twine",
             "aas-core-meta@git+https://github.com/aas-core-works/aas-core-meta@95055a5#egg=aas-core-meta",
-            "aas-core-codegen@git+https://github.com/aas-core-works/aas-core-codegen@163a890#egg=aas-core-codegen",
+            "aas-core-codegen@git+https://github.com/aas-core-works/aas-core-codegen@95320c3#egg=aas-core-codegen",
             "hypothesis==6.46.3",
             "xmlschema==1.10.0",
         ]
