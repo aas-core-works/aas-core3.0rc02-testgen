@@ -164,7 +164,7 @@ class _Serializer:
         impl = minidom.getDOMImplementation()
         assert impl is not None
         doc = impl.createDocument(
-            namespaceURI="http://www.admin-shell.io/aas/3/0/RC02",
+            namespaceURI=self.symbol_table.meta_model.xml_namespace,
             qualifiedName=element_name,
             doctype=None,
         )
@@ -172,7 +172,7 @@ class _Serializer:
         root = doc.documentElement
 
         # noinspection SpellCheckingInspection
-        root.setAttribute("xmlns", "http://www.admin-shell.io/aas/3/0/RC02")
+        root.setAttribute("xmlns", self.symbol_table.meta_model.xml_namespace)
 
         sequence = self._serialize_instance(instance=instance, doc=doc)
         for node in sequence:
