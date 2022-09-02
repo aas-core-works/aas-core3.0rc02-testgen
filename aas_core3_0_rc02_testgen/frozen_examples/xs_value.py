@@ -1123,7 +1123,7 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
             ),
         ),
         (
-            "xs:NonNegativeInteger",
+            "xs:nonNegativeInteger",
             Examples(
                 positives=collections.OrderedDict(
                     [
