@@ -174,6 +174,14 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                             "date_with_large_negative_year",
                             "-12345678901234567890123456789012345678901234567890-04-01",
                         ),
+                        (
+                            "year_1_bce_is_a_leap_year",
+                            "-0001-02-29",
+                        ),
+                        (
+                            "year_5_bce_is_a_leap_year",
+                            "-0005-02-29",
+                        ),
                         ("fuzzed_01", "0705-04-1014:00"),
                         ("fuzzed_02", "-0236-12-31Z"),
                         ("fuzzed_03", "9088-11-06"),
@@ -196,6 +204,10 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                         ("date_with_invalid_positive_offset", "2022-04-01+15:00"),
                         ("date_with_invalid_negative_offset", "2022-04-01-15:00"),
                         ("date_with_seconds_in_offset", "2022-04-01+02:00:12"),
+                        ("year_zero_doesnt_exist", "0000-01-02"),
+                        # NOTE (mristin, 2022-10-30):
+                        # Year 1 BCE is a leap year.
+                        ("year_4_bce_february_29th", "-0004-02-29"),
                     ]
                 ),
             ),
@@ -224,6 +236,14 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                         ),
                         ("midnight_with_zeros", "2022-04-01T00:00:00"),
                         ("midnight_with_24_hours", "2022-04-01T24:00:00"),
+                        (
+                            "year_1_bce_is_a_leap_year",
+                            "-0001-02-29T01:02:03",
+                        ),
+                        (
+                            "year_5_bce_is_a_leap_year",
+                            "-0005-02-29T01:02:03",
+                        ),
                         ("fuzzed_01", "-0811-10-21T24:00:00.000000Z"),
                         ("fuzzed_02", "-0819-11-21T24:00:00.00Z"),
                         ("fuzzed_03", "-665280014-06-30T21:15:16Z"),
@@ -264,6 +284,10 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                             "date_time_with_unexpected_prefix",
                             "unexpected-prefix-2022-04-01T01:02:03Z",
                         ),
+                        ("year_zero_doesnt_exist", "0000-01-02T01:02:03"),
+                        # NOTE (mristin, 2022-10-30):
+                        # Year 1 BCE is a leap year.
+                        ("year_4_bce_february_29th", "-0004-02-29T01:02:03"),
                     ]
                 ),
             ),
@@ -300,6 +324,14 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                         ),
                         ("midnight_with_zeros", "2022-04-01T00:00:00Z"),
                         ("midnight_with_24_hours", "2022-04-01T24:00:00Z"),
+                        (
+                            "year_1_bce_is_a_leap_year",
+                            "-0001-02-29T01:02:03Z",
+                        ),
+                        (
+                            "year_5_bce_is_a_leap_year",
+                            "-0005-02-29T01:02:03Z",
+                        ),
                         ("fuzzed_01", "0300-04-21T24:00:00.00+11:11"),
                         ("fuzzed_02", "-1000-01-01T00:00:00Z"),
                         ("fuzzed_03", "-60601-02-04T24:00:00.00000000Z"),
@@ -341,6 +373,10 @@ BY_VALUE_TYPE: Mapping[str, Examples] = collections.OrderedDict(
                             "date_time_stamp_with_unexpected_prefix",
                             "unexpected-prefix-2022-04-01T01:02:03Z",
                         ),
+                        ("year_zero_doesnt_exist", "0000-01-02T01:02:03Z"),
+                        # NOTE (mristin, 2022-10-30):
+                        # Year 1 BCE is a leap year.
+                        ("year_4_bce_february_29th", "-0004-02-29T01:02:03Z"),
                     ]
                 ),
             ),
