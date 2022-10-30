@@ -46,7 +46,7 @@ setup(
             "pydocstyle>=2.1.1<3",
             "coverage>=6,<7",
             "twine",
-            "aas-core-meta@git+https://github.com/aas-core-works/aas-core-meta@3ffe727#egg=aas-core-meta",
+            "aas-core-meta@git+https://github.com/aas-core-works/aas-core-meta@b2d1230#egg=aas-core-meta",
             "aas-core-codegen@git+https://github.com/aas-core-works/aas-core-codegen@46ddb38f#egg=aas-core-codegen",
             "hypothesis==6.46.3",
             "xmlschema==1.10.0",
