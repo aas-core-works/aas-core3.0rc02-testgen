@@ -1273,13 +1273,13 @@ class Handyman:
             )
 
             data_type_def_xsd_enum = self.symbol_table.must_find_enumeration(
-                Identifier("Data_type_def_XSD")
+                Identifier("Data_type_def_xsd")
             )
 
             xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
 
             aas_submodel_elements_enum = self.symbol_table.must_find_enumeration(
-                Identifier("AAS_submodel_elements")
+                Identifier("Aas_submodel_elements")
             )
 
             property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
@@ -2131,14 +2131,14 @@ def _generate_additional_cases_for_submodel_element_list(
     property_cls = symbol_table.must_find_concrete_class(Identifier("Property"))
 
     data_type_def_xsd_enum = symbol_table.must_find_enumeration(
-        Identifier("Data_type_def_XSD")
+        Identifier("Data_type_def_xsd")
     )
 
     xs_boolean_literal = data_type_def_xsd_enum.literals_by_name["Boolean"]
     xs_int_literal = data_type_def_xsd_enum.literals_by_name["Int"]
 
     aas_submodel_elements_enum = symbol_table.must_find_enumeration(
-        Identifier("AAS_submodel_elements")
+        Identifier("Aas_submodel_elements")
     )
 
     property_literal = aas_submodel_elements_enum.literals_by_name["Property"]
@@ -2584,7 +2584,7 @@ def _generate_additional_cases_for_reference(
     # region For a model reference, first key not in AAS identifiables
 
     assert_key_type_outside_set(
-        key_type="Global_reference", the_set="AAS_identifiables"
+        key_type="Global_reference", the_set="Aas_identifiables"
     )
 
     constructor = new_constructor_of_model_reference()
@@ -2739,7 +2739,7 @@ def _generate_additional_cases_for_reference(
 
     assert_key_type_in_set(key_type="Submodel", the_set="Globally_identifiables")
 
-    assert_key_type_in_set(key_type="Submodel", the_set="AAS_identifiables")
+    assert_key_type_in_set(key_type="Submodel", the_set="Aas_identifiables")
 
     constructor = new_constructor_of_model_reference()
 
@@ -3299,7 +3299,7 @@ def generate(
     qualifier_cls = symbol_table.must_find_concrete_class(Identifier("Qualifier"))
 
     data_type_def_xsd_symbol = symbol_table.must_find_enumeration(
-        Identifier("Data_type_def_XSD")
+        Identifier("Data_type_def_xsd")
     )
 
     for cls in (property_cls, range_cls, extension_cls, qualifier_cls):
